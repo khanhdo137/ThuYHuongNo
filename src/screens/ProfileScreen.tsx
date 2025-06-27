@@ -1,14 +1,20 @@
+import apiClient from '@/api/client';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 // Mock data for the user
-const user = {
-    avatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRbnYeK93JiGT6gAIzmbyt14T6JjVDxL5BOXA&s', // Placeholder image URL
+const defaultUser = {
+    avatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRbnYeK93JiGT6gAIzmbyt14T6JjVDxL5BOXA&s',
     name: 'Thu Y Huong No',
+    customerName: 'Thu Y Huong No',
+    address: '',
+    gender: 0,
+    email: '',
+    phoneNumber: '',
 };
 
 interface SectionProps {
@@ -42,7 +48,7 @@ const MenuItem = ({ icon, text, onPress, rightContent }: MenuItemProps) => (
     </TouchableOpacity>
 );
 
-const LoggedInView = ({ onLogout }: { onLogout: () => void }) => {
+const LoggedInView = ({ onLogout, user, onEdit }: { onLogout: () => void, user: any, onEdit: () => void }) => {
     const colorScheme = useColorScheme();
     const [isDarkMode, setIsDarkMode] = React.useState(colorScheme === 'dark');
     const toggleDarkMode = () => setIsDarkMode(previousState => !previousState);
@@ -56,12 +62,12 @@ const LoggedInView = ({ onLogout }: { onLogout: () => void }) => {
             {/* 1. User Info */}
             <View style={styles.userInfoSection}>
                 <Image source={{ uri: user.avatar }} style={styles.avatar} />
-                <Text style={styles.userName}>{user.name}</Text>
+                <Text style={styles.userName}>{user.customerName || user.name}</Text>
             </View>
 
             {/* 2. Personal Functions */}
             <Section>
-                <MenuItem icon="person-outline" text="Chỉnh sửa thông tin cá nhân" onPress={() => {}} />
+                <MenuItem icon="person-outline" text="Chỉnh sửa thông tin cá nhân" onPress={onEdit} />
                 <MenuItem icon="lock-closed-outline" text="Đổi mật khẩu" onPress={() => {}} />
                 <MenuItem
                     icon="moon-outline"
@@ -116,17 +122,27 @@ const GuestView = () => {
 
 export default function ProfileScreen() {
     const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+    const [user, setUser] = React.useState(defaultUser);
+    const [editModalVisible, setEditModalVisible] = React.useState(false);
+    const [editData, setEditData] = React.useState({ ...defaultUser });
+    const [loading, setLoading] = React.useState(false);
 
     React.useEffect(() => {
         const checkLogin = async () => {
             const token = await AsyncStorage.getItem('token');
             setIsLoggedIn(!!token);
+            if (token) {
+                try {
+                    const res = await apiClient.get('/User/profile');
+                    if (res.data) {
+                        setUser({ ...defaultUser, ...res.data });
+                    }
+                } catch (err) {
+                    // Nếu lỗi, giữ user mặc định
+                }
+            }
         };
-        const unsubscribe = () => {};
         checkLogin();
-        // Listen to focus event to refresh login state
-        // (optional: if you use navigation, you can add listener here)
-        return unsubscribe;
     }, []);
 
     const handleLogout = async () => {
@@ -134,9 +150,94 @@ export default function ProfileScreen() {
         setIsLoggedIn(false);
     };
 
+    const handleEdit = () => {
+        setEditData({ ...user });
+        setEditModalVisible(true);
+    };
+
+    const handleSaveEdit = async () => {
+        setLoading(true);
+        try {
+            const body = {
+                customerName: editData.customerName,
+                address: editData.address,
+                gender: editData.gender,
+                email: editData.email,
+                phoneNumber: editData.phoneNumber,
+            };
+            await apiClient.put('/User/update-customer', body);
+            setUser({ ...user, ...body });
+            setEditModalVisible(false);
+            Alert.alert('Thành công', 'Cập nhật thông tin thành công!');
+        } catch (error) {
+            let errorMessage = 'Đã xảy ra lỗi khi cập nhật.';
+            if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data) {
+                errorMessage = (error.response.data as { message?: string }).message || errorMessage;
+            }
+            Alert.alert('Lỗi', errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <SafeAreaView style={styles.safeArea}>
-            {isLoggedIn ? <LoggedInView onLogout={handleLogout} /> : <GuestView />}
+            {isLoggedIn ? <LoggedInView onLogout={handleLogout} user={user} onEdit={handleEdit} /> : <GuestView />}
+            <Modal
+                visible={editModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setEditModalVisible(false)}
+            >
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
+                    <View style={{ backgroundColor: 'white', borderRadius: 10, padding: 20, width: '90%' }}>
+                        <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>Chỉnh sửa thông tin</Text>
+                        <TextInput
+                            style={styles.input}
+                            value={editData.customerName}
+                            onChangeText={v => setEditData({ ...editData, customerName: v })}
+                            placeholder="Họ và tên"
+                        />
+                        <TextInput
+                            style={styles.input}
+                            value={editData.address}
+                            onChangeText={v => setEditData({ ...editData, address: v })}
+                            placeholder="Địa chỉ"
+                        />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                            <Text style={{ marginRight: 10 }}>Giới tính:</Text>
+                            <TouchableOpacity onPress={() => setEditData({ ...editData, gender: 0 })} style={{ marginRight: 10 }}>
+                                <Text style={{ color: editData.gender === 0 ? '#007bff' : '#888' }}>Nam</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setEditData({ ...editData, gender: 1 })}>
+                                <Text style={{ color: editData.gender === 1 ? '#007bff' : '#888' }}>Nữ</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <TextInput
+                            style={styles.input}
+                            value={editData.email}
+                            onChangeText={v => setEditData({ ...editData, email: v })}
+                            placeholder="Email"
+                            keyboardType="email-address"
+                        />
+                        <TextInput
+                            style={styles.input}
+                            value={editData.phoneNumber}
+                            onChangeText={v => setEditData({ ...editData, phoneNumber: v })}
+                            placeholder="Số điện thoại"
+                            keyboardType="phone-pad"
+                        />
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
+                            <TouchableOpacity onPress={() => setEditModalVisible(false)} style={{ marginRight: 15 }} disabled={loading}>
+                                <Text style={{ color: '#888', fontSize: 16 }}>Hủy</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleSaveEdit} disabled={loading}>
+                                {loading ? <ActivityIndicator /> : <Text style={{ color: '#007bff', fontSize: 16 }}>Lưu</Text>}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -246,5 +347,11 @@ const styles = StyleSheet.create({
     switchAuthText: {
         fontSize: 15,
         color: '#555',
-    }
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+        padding: 10,
+        marginBottom: 10,
+    },
 }); 
