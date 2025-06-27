@@ -1,5 +1,6 @@
 import apiClient from '@/api/client';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -15,6 +16,9 @@ export default function RegisterScreen() {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [customerName, setCustomerName] = useState('');
     const [address, setAddress] = useState('');
+    const [gender, setGender] = useState(0); // 0: Nam, 1: Nữ
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     
     const [loading, setLoading] = useState(false);
 
@@ -42,7 +46,7 @@ export default function RegisterScreen() {
             customerName,
             address,
             role: 0, // 0 = Customer
-            gender: 0, // Mặc định là Nam, có thể thay đổi sau trong profile
+            gender, // Lấy từ state
         };
 
         try {
@@ -57,7 +61,10 @@ export default function RegisterScreen() {
 
         } catch (error) {
             console.error('Registration failed:', error);
-            const errorMessage = error.response?.data?.message || 'Đã xảy ra lỗi trong quá trình đăng ký. Vui lòng thử lại.';
+            let errorMessage = 'Đã xảy ra lỗi trong quá trình đăng ký. Vui lòng thử lại.';
+            if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data) {
+                errorMessage = (error.response.data as { message?: string }).message || errorMessage;
+            }
             Alert.alert('Đăng ký thất bại', errorMessage);
         } finally {
             setLoading(false);
@@ -86,13 +93,33 @@ export default function RegisterScreen() {
                     {/* Mật khẩu */}
                     <View style={styles.inputContainer}>
                         <Ionicons name="lock-closed-outline" size={22} color="#888" style={styles.inputIcon} />
-                        <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="Mật khẩu (*)" secureTextEntry editable={!loading} />
+                        <TextInput
+                            style={styles.input}
+                            value={password}
+                            onChangeText={setPassword}
+                            placeholder="Mật khẩu (*)"
+                            secureTextEntry={!showPassword}
+                            editable={!loading}
+                        />
+                        <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)} disabled={loading}>
+                            <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color="#888" />
+                        </TouchableOpacity>
                     </View>
 
                     {/* Xác nhận mật khẩu */}
                     <View style={styles.inputContainer}>
                         <Ionicons name="lock-closed-outline" size={22} color="#888" style={styles.inputIcon} />
-                        <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Xác nhận mật khẩu (*)" secureTextEntry editable={!loading} />
+                        <TextInput
+                            style={styles.input}
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            placeholder="Xác nhận mật khẩu (*)"
+                            secureTextEntry={!showConfirmPassword}
+                            editable={!loading}
+                        />
+                        <TouchableOpacity onPress={() => setShowConfirmPassword((prev) => !prev)} disabled={loading}>
+                            <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color="#888" />
+                        </TouchableOpacity>
                     </View>
                     
                     {/* Họ và tên */}
@@ -111,6 +138,20 @@ export default function RegisterScreen() {
                      <View style={styles.inputContainer}>
                         <Ionicons name="location-outline" size={22} color="#888" style={styles.inputIcon} />
                         <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Địa chỉ" editable={!loading} />
+                    </View>
+
+                    {/* Giới tính */}
+                    <View style={styles.inputContainer}>
+                        <Ionicons name="male-female-outline" size={22} color="#888" style={styles.inputIcon} />
+                        <Picker
+                            selectedValue={gender}
+                            style={{ flex: 1, height: 50 }}
+                            onValueChange={(itemValue: number) => setGender(itemValue)}
+                            enabled={!loading}
+                        >
+                            <Picker.Item label="Nam" value={0} />
+                            <Picker.Item label="Nữ" value={1} />
+                        </Picker>
                     </View>
 
                     <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={loading}>
