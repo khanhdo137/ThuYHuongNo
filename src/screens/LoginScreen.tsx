@@ -1,21 +1,48 @@
+import apiClient from '@/api/client'; // Import the configured axios client
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
-import { Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function LoginScreen() {
     const navigation = useNavigation();
-    const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = () => {
-        // Basic validation
-        if (!email || !password) {
-            Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ email và mật khẩu.');
+    const handleLogin = async () => {
+        if (!username || !password) {
+            Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
             return;
         }
-        // TODO: Implement actual login logic (e.g., call API)
-        Alert.alert('Thành công', 'Đăng nhập thành công! (demo)');
+
+        setLoading(true);
+        try {
+            // Corrected endpoint based on documentation: /user/login
+            const response = await apiClient.post('/user/login', {
+                username: username,
+                password: password,
+            });
+
+            // Assuming the API returns a token on successful login
+            const { token, user } = response.data;
+
+            // TODO: Save the token and user data to secure storage and global state (e.g., Context)
+            console.log('Login successful:', token, user);
+            Alert.alert('Thành công', `Chào mừng ${user.username}!`);
+            
+            // Navigate to the main app (e.g., Profile screen) after successful login
+            // You might want to reset the navigation stack
+            navigation.navigate('Main' as never);
+
+        } catch (error) {
+            console.error('Login failed:', error);
+            // Try to show a specific error message from the API if possible
+            const errorMessage = error.response?.data?.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.';
+            Alert.alert('Đăng nhập thất bại', errorMessage);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -25,14 +52,14 @@ export default function LoginScreen() {
                 <Text style={styles.subtitle}>Chào mừng trở lại!</Text>
 
                 <View style={styles.inputContainer}>
-                    <Ionicons name="mail-outline" size={22} color="#888" style={styles.inputIcon} />
+                    <Ionicons name="person-outline" size={22} color="#888" style={styles.inputIcon} />
                     <TextInput
                         style={styles.input}
-                        value={email}
-                        onChangeText={setEmail}
-                        placeholder="Nhập Email của bạn"
-                        keyboardType="email-address"
+                        value={username}
+                        onChangeText={setUsername}
+                        placeholder="Nhập tên đăng nhập"
                         autoCapitalize="none"
+                        editable={!loading}
                     />
                 </View>
 
@@ -44,14 +71,19 @@ export default function LoginScreen() {
                         onChangeText={setPassword}
                         placeholder="Nhập mật khẩu"
                         secureTextEntry
+                        editable={!loading}
                     />
                 </View>
                 
-                <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-                    <Text style={styles.loginButtonText}>Đăng nhập</Text>
+                <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
+                    {loading ? (
+                        <ActivityIndicator color="white" />
+                    ) : (
+                        <Text style={styles.loginButtonText}>Đăng nhập</Text>
+                    )}
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
+                <TouchableOpacity onPress={() => navigation.navigate('Register' as never)} disabled={loading}>
                     <Text style={styles.switchText}>Chưa có tài khoản? <Text style={{fontWeight: 'bold'}}>Đăng ký ngay</Text></Text>
                 </TouchableOpacity>
             </View>
