@@ -1,5 +1,6 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
@@ -41,7 +42,7 @@ const MenuItem = ({ icon, text, onPress, rightContent }: MenuItemProps) => (
     </TouchableOpacity>
 );
 
-const LoggedInView = () => {
+const LoggedInView = ({ onLogout }: { onLogout: () => void }) => {
     const colorScheme = useColorScheme();
     const [isDarkMode, setIsDarkMode] = React.useState(colorScheme === 'dark');
     const toggleDarkMode = () => setIsDarkMode(previousState => !previousState);
@@ -90,7 +91,7 @@ const LoggedInView = () => {
             {/* 5. Others */}
             <Section>
                 <MenuItem icon="chatbubble-ellipses-outline" text="Gửi phản hồi / Báo lỗi" onPress={() => {}} />
-                <MenuItem icon="log-out-outline" text="Đăng xuất" onPress={() => {}} />
+                <MenuItem icon="log-out-outline" text="Đăng xuất" onPress={onLogout} />
             </Section>
         </ScrollView>
     );
@@ -114,12 +115,28 @@ const GuestView = () => {
 }
 
 export default function ProfileScreen() {
-    // In a real app, this would come from an Auth Context
     const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+
+    React.useEffect(() => {
+        const checkLogin = async () => {
+            const token = await AsyncStorage.getItem('token');
+            setIsLoggedIn(!!token);
+        };
+        const unsubscribe = () => {};
+        checkLogin();
+        // Listen to focus event to refresh login state
+        // (optional: if you use navigation, you can add listener here)
+        return unsubscribe;
+    }, []);
+
+    const handleLogout = async () => {
+        await AsyncStorage.removeItem('token');
+        setIsLoggedIn(false);
+    };
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            {isLoggedIn ? <LoggedInView /> : <GuestView />}
+            {isLoggedIn ? <LoggedInView onLogout={handleLogout} /> : <GuestView />}
         </SafeAreaView>
     );
 }

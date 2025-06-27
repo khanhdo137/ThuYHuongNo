@@ -11,6 +11,7 @@
 //
 // export default client; 
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 // API URL, sử dụng IP của máy tính để điện thoại thật có thể kết nối
@@ -32,5 +33,19 @@ const client = axios.create({
 //   }
 //   return config;
 // });
+
+client.interceptors.request.use(
+  async (config) => {
+    const token = await AsyncStorage.getItem('token');
+    if (token) {
+      if (!config.headers) {
+        config.headers = {};
+      }
+      (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 export default client; 

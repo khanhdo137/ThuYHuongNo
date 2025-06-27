@@ -1,5 +1,6 @@
 import apiClient from '@/api/client'; // Import the configured axios client
 import Ionicons from '@expo/vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -9,6 +10,7 @@ export default function LoginScreen() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleLogin = async () => {
         if (!username || !password) {
@@ -24,12 +26,19 @@ export default function LoginScreen() {
                 password: password,
             });
 
-            // Assuming the API returns a token on successful login
-            const { token, user } = response.data;
+            // Log the response to debug structure
+            console.log('Login response:', response.data);
+            const { token, user } = response.data || {};
 
             // TODO: Save the token and user data to secure storage and global state (e.g., Context)
-            console.log('Login successful:', token, user);
-            Alert.alert('Thành công', `Chào mừng ${user.username}!`);
+            if (token) {
+                await AsyncStorage.setItem('token', token);
+            }
+            if (user && user.username) {
+                Alert.alert('Thành công', `Chào mừng ${user.username}!`);
+            } else {
+                Alert.alert('Thành công', 'Đăng nhập thành công!');
+            }
             
             // Navigate to the main app (e.g., Profile screen) after successful login
             // You might want to reset the navigation stack
@@ -37,8 +46,10 @@ export default function LoginScreen() {
 
         } catch (error) {
             console.error('Login failed:', error);
-            // Try to show a specific error message from the API if possible
-            const errorMessage = error.response?.data?.message || 'Tên đăng nhập hoặc mật khẩu không chính xác.';
+            let errorMessage = 'Tên đăng nhập hoặc mật khẩu không chính xác.';
+            if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data) {
+                errorMessage = (error.response.data as { message?: string }).message || errorMessage;
+            }
             Alert.alert('Đăng nhập thất bại', errorMessage);
         } finally {
             setLoading(false);
@@ -70,9 +81,12 @@ export default function LoginScreen() {
                         value={password}
                         onChangeText={setPassword}
                         placeholder="Nhập mật khẩu"
-                        secureTextEntry
+                        secureTextEntry={!showPassword}
                         editable={!loading}
                     />
+                    <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)} disabled={loading}>
+                        <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color="#888" />
+                    </TouchableOpacity>
                 </View>
                 
                 <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
