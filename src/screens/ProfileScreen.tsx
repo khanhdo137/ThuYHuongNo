@@ -52,6 +52,7 @@ const LoggedInView = ({ onLogout, user, onEdit }: { onLogout: () => void, user: 
     const colorScheme = useColorScheme();
     const [isDarkMode, setIsDarkMode] = React.useState(colorScheme === 'dark');
     const toggleDarkMode = () => setIsDarkMode(previousState => !previousState);
+    const navigation = useNavigation();
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
@@ -79,7 +80,7 @@ const LoggedInView = ({ onLogout, user, onEdit }: { onLogout: () => void, user: 
 
             {/* My Pets Section */}
             <Section>
-                <MenuItem icon="paw-outline" text="Thú cưng của tôi" onPress={() => { /* Navigate to pet list screen */ }} />
+                <MenuItem icon="paw-outline" text="Thú cưng của tôi" onPress={() => navigation.navigate('MyPets' as never)} />
             </Section>
             
             {/* 3. History & Activity */}

@@ -1,5 +1,7 @@
+import apiClient from '@/api/client';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useState } from 'react';
 import { GestureResponderEvent, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 // Custom component for form rows
@@ -49,6 +51,49 @@ export default function BookingScreen() {
     
     const [isPickerVisible, setPickerVisible] = useState(false);
     const [pickerData, setPickerData] = useState<{items: string[], onSelect: (value: string) => void}>({ items: [], onSelect: () => {} });
+    const [doctors, setDoctors] = useState<Array<{doctorId: number, fullName: string, specialization: string, branch: string, displayText: string}>>([]);
+    const [loading, setLoading] = useState(false);
+    const [userInfo, setUserInfo] = useState<{customerName: string, phoneNumber: string} | null>(null);
+
+    useEffect(() => {
+        const fetchDoctors = async () => {
+            setLoading(true);
+            try {
+                const response = await apiClient.get('/Doctor');
+                if (response.data) {
+                    setDoctors(response.data);
+                }
+            } catch (error) {
+                console.error('Error fetching doctors:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchDoctors();
+    }, []);
+
+    useEffect(() => {
+        const fetchUserInfo = async () => {
+            try {
+                const token = await AsyncStorage.getItem('token');
+                if (token) {
+                    const response = await apiClient.get('/User/profile');
+                    console.log('User profile response:', response.data);
+                    if (response.data) {
+                        setUserInfo(response.data);
+                        setFormData(prev => ({
+                            ...prev,
+                            phone: response.data.phoneNumber || '',
+                            name: response.data.customerName || '',
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching user info:', error);
+            }
+        };
+        fetchUserInfo();
+    }, []);
 
     const openPicker = (items: string[], onSelect: (value: string) => void) => {
         setPickerData({ items, onSelect });
@@ -67,7 +112,7 @@ export default function BookingScreen() {
     // Sample data for pickers
     const petOptions = ['Mới']; // In future, this would be: ['Mới', ...user.pets]
     const speciesOptions = ['Chó', 'Mèo'];
-    const doctorOptions = ['Không chọn riêng', 'BS. Nguyễn Văn A', 'BS. Trần Thị B'];
+    const doctorOptions = ['Không chọn riêng', ...doctors.map(d => d.displayText)];
     const serviceOptions = ['Khám tổng quát nội khoa', 'Tiêm phòng', 'Siêu âm', 'Phẫu thuật'];
 
     return (
