@@ -54,6 +54,7 @@ export default function BookingScreen() {
     const [doctors, setDoctors] = useState<Array<{doctorId: number, fullName: string, specialization: string, branch: string, displayText: string}>>([]);
     const [loading, setLoading] = useState(false);
     const [userInfo, setUserInfo] = useState<{customerName: string, phoneNumber: string} | null>(null);
+    const [pets, setPets] = useState<Array<{ petId: number, name: string, species: string, age?: number }>>([]);
 
     useEffect(() => {
         const fetchDoctors = async () => {
@@ -69,7 +70,21 @@ export default function BookingScreen() {
                 setLoading(false);
             }
         };
+        const fetchPets = async () => {
+            try {
+                const token = await AsyncStorage.getItem('token');
+                if (token) {
+                    const response = await apiClient.get('/Pet');
+                    if (response.data) {
+                        setPets(response.data.map((pet: any) => ({ petId: pet.petId, name: pet.name, species: pet.species, age: pet.age })));
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching pets:', error);
+            }
+        };
         fetchDoctors();
+        fetchPets();
     }, []);
 
     useEffect(() => {
@@ -110,7 +125,7 @@ export default function BookingScreen() {
     };
 
     // Sample data for pickers
-    const petOptions = ['Mới']; // In future, this would be: ['Mới', ...user.pets]
+    const petOptions = ['Mới', ...pets.map(pet => pet.name)];
     const speciesOptions = ['Chó', 'Mèo'];
     const doctorOptions = ['Không chọn riêng', ...doctors.map(d => d.displayText)];
     const serviceOptions = ['Khám tổng quát nội khoa', 'Tiêm phòng', 'Siêu âm', 'Phẫu thuật'];
@@ -137,7 +152,21 @@ export default function BookingScreen() {
                                 <MockPicker 
                                     label="-- Mới --" 
                                     selectedValue={formData.petSelection} 
-                                    onPress={() => openPicker(petOptions, (val) => handleInputChange('petSelection', val))}
+                                    onPress={() => openPicker(petOptions, (val) => {
+                                        handleInputChange('petSelection', val);
+                                        if (val === 'Mới') {
+                                            handleInputChange('petName', '');
+                                            handleInputChange('species', '');
+                                            handleInputChange('age', '');
+                                        } else {
+                                            const selectedPet = pets.find(p => p.name === val);
+                                            if (selectedPet) {
+                                                handleInputChange('petName', selectedPet.name);
+                                                handleInputChange('species', selectedPet.species);
+                                                handleInputChange('age', selectedPet.age ? selectedPet.age.toString() : '');
+                                            }
+                                        }
+                                    })}
                                 />
                             </FormRow>
                         </View>
