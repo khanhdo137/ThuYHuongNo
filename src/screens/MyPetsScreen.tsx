@@ -17,6 +17,7 @@ interface Pet {
     imageUrl?: string;
     age?: number;
     customerName: string;
+    gender?: string;
 }
 
 // Interface cho tạo thú cưng mới
@@ -26,6 +27,7 @@ interface CreatePetData {
     breed?: string;
     birthDate?: string;
     imageUrl?: string;
+    gender?: string;
 }
 
 export default function MyPetsScreen() {
@@ -36,13 +38,20 @@ export default function MyPetsScreen() {
         species: '', 
         breed: '', 
         birthDate: '', 
-        imageUrl: '' 
+        imageUrl: '',
+        gender: '',
     });
     const [loading, setLoading] = useState(false);
     const [addingPet, setAddingPet] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [detailModalVisible, setDetailModalVisible] = useState(false);
+    const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
+    const [editMode, setEditMode] = useState(false);
+    const [editPet, setEditPet] = useState<CreatePetData>({ name: '', species: '', breed: '', birthDate: '', imageUrl: '', gender: '' });
+    const [editingImageUri, setEditingImageUri] = useState<string | null>(null);
+    const [editingUploading, setEditingUploading] = useState(false);
     const navigation = useNavigation();
 
     // Lấy danh sách thú cưng từ API
@@ -66,7 +75,7 @@ export default function MyPetsScreen() {
     };
 
     const renderPetItem = ({ item }: { item: Pet }) => (
-        <View style={styles.petCard}>
+        <TouchableOpacity style={styles.petCard} onPress={() => { setSelectedPet(item); setDetailModalVisible(true); }}>
             <Image 
                 source={{ 
                     uri: item.imageUrl || 'https://via.placeholder.com/150/cccccc/666666?text=Pet' 
@@ -76,7 +85,7 @@ export default function MyPetsScreen() {
             <Text style={styles.petName}>{item.name}</Text>
             <Text style={styles.petSpecies}>{item.species}</Text>
             {item.age && <Text style={styles.petAge}>{item.age} tuổi</Text>}
-        </View>
+        </TouchableOpacity>
     );
 
     const handleSelectImage = async () => {
@@ -150,6 +159,7 @@ export default function MyPetsScreen() {
                 breed: newPet.breed?.trim() || null,
                 birthDateString: newPet.birthDate || null,
                 imageUrl: imageUrl || null,
+                gender: newPet.gender || null,
             };
 
             await apiClient.post('/Pet', petData);
@@ -157,7 +167,7 @@ export default function MyPetsScreen() {
             // Làm mới danh sách thú cưng
             await fetchPets();
             
-            setNewPet({ name: '', species: '', breed: '', birthDate: '', imageUrl: '' });
+            setNewPet({ name: '', species: '', breed: '', birthDate: '', imageUrl: '', gender: '' });
             setSelectedImageUri(null);
             setAddModalVisible(false);
             Alert.alert('Thành công', 'Đã thêm thú cưng mới!');
@@ -274,6 +284,25 @@ export default function MyPetsScreen() {
                             />
                         )}
 
+                        {/* Giới tính */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                            <Text style={{ marginRight: 10, fontSize: 16 }}>Giới tính:</Text>
+                            <TouchableOpacity
+                                style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }}
+                                onPress={() => setNewPet({ ...newPet, gender: 'Đực' })}
+                            >
+                                <Ionicons name={newPet.gender === 'Đực' ? 'radio-button-on' : 'radio-button-off'} size={20} color="#007bff" />
+                                <Text style={{ marginLeft: 5 }}>Đực</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={{ flexDirection: 'row', alignItems: 'center' }}
+                                onPress={() => setNewPet({ ...newPet, gender: 'Cái' })}
+                            >
+                                <Ionicons name={newPet.gender === 'Cái' ? 'radio-button-on' : 'radio-button-off'} size={20} color="#007bff" />
+                                <Text style={{ marginLeft: 5 }}>Cái</Text>
+                            </TouchableOpacity>
+                        </View>
+
                         <View style={styles.imageSection}>
                             <Text style={styles.imageSectionTitle}>Hoặc chọn ảnh từ thiết bị:</Text>
                             <TouchableOpacity 
@@ -305,7 +334,7 @@ export default function MyPetsScreen() {
                                 style={styles.cancelButton} 
                                 onPress={() => {
                                     setAddModalVisible(false);
-                                    setNewPet({ name: '', species: '', breed: '', birthDate: '', imageUrl: '' });
+                                    setNewPet({ name: '', species: '', breed: '', birthDate: '', imageUrl: '', gender: '' });
                                     setSelectedImageUri(null);
                                 }}
                                 disabled={addingPet}
@@ -325,6 +354,192 @@ export default function MyPetsScreen() {
                                 )}
                             </TouchableOpacity>
                         </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Pet Detail Modal */}
+            <Modal
+                visible={detailModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setDetailModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <TouchableOpacity style={{ position: 'absolute', top: 10, right: 10, zIndex: 2 }} onPress={() => { setDetailModalVisible(false); setEditMode(false); }}>
+                            <Ionicons name="close-circle" size={28} color="#ff4444" />
+                        </TouchableOpacity>
+                        {selectedPet && !editMode && (
+                            <>
+                                <Image source={{ uri: selectedPet.imageUrl || 'https://via.placeholder.com/150/cccccc/666666?text=Pet' }} style={[styles.selectedImage, { alignSelf: 'center', marginBottom: 15 }]} />
+                                <Text style={{ fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 }}>{selectedPet.name}</Text>
+                                <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 5 }}>Loài: {selectedPet.species}</Text>
+                                {selectedPet.breed && <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 5 }}>Giống: {selectedPet.breed}</Text>}
+                                {selectedPet.gender && <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 5 }}>Giới tính: {selectedPet.gender}</Text>}
+                                {selectedPet.birthDate && <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 5 }}>Ngày sinh: {selectedPet.birthDate}</Text>}
+                                {selectedPet.age && <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 5 }}>Tuổi: {selectedPet.age}</Text>}
+                                <Text style={{ fontSize: 15, textAlign: 'center', color: '#888', marginTop: 10 }}>Chủ nuôi: {selectedPet.customerName}</Text>
+                                <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 20 }}>
+                                    <TouchableOpacity style={[styles.addButton, { marginRight: 10 }]} onPress={() => { setEditMode(true); setEditPet({ name: selectedPet.name, species: selectedPet.species, breed: selectedPet.breed, birthDate: selectedPet.birthDate, imageUrl: selectedPet.imageUrl, gender: selectedPet.gender }); setEditingImageUri(null); }}>
+                                        <Ionicons name="create-outline" size={20} color="white" />
+                                        <Text style={styles.addButtonText}>Chỉnh sửa</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={[styles.deleteButton]} onPress={async () => {
+                                        Alert.alert(
+                                            'Xác nhận',
+                                            `Bạn có chắc chắn muốn xóa thú cưng "${selectedPet.name}"?`,
+                                            [
+                                                { text: 'Hủy', style: 'cancel' },
+                                                { text: 'Xóa', style: 'destructive', onPress: async () => {
+                                                    try {
+                                                        await apiClient.delete(`/Pet/${selectedPet.petId}`);
+                                                        await fetchPets();
+                                                        setDetailModalVisible(false);
+                                                        setEditMode(false);
+                                                        Alert.alert('Thành công', 'Đã xóa thú cưng!');
+                                                    } catch (error) {
+                                                        let errorMessage = 'Đã xảy ra lỗi khi xóa.';
+                                                        if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data) {
+                                                            errorMessage = (error.response.data as { message?: string }).message || errorMessage;
+                                                        }
+                                                        Alert.alert('Lỗi', errorMessage);
+                                                    }
+                                                }},
+                                            ]
+                                        );
+                                    }}>
+                                        <Ionicons name="trash-outline" size={20} color="white" />
+                                        <Text style={styles.deleteButtonText}>Xóa</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        )}
+                        {selectedPet && editMode && (
+                            <>
+                                <Text style={{ fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 }}>Chỉnh sửa thú cưng</Text>
+                                {/* Ảnh */}
+                                <View style={styles.imageSection}>
+                                    <Text style={styles.imageSectionTitle}>Ảnh thú cưng:</Text>
+                                    <TouchableOpacity 
+                                        style={styles.selectImageButton} 
+                                        onPress={async () => {
+                                            Alert.alert(
+                                                'Chọn ảnh',
+                                                'Bạn muốn chọn ảnh từ đâu?',
+                                                [
+                                                    {
+                                                        text: 'Thư viện',
+                                                        onPress: async () => {
+                                                            const imageUri = await pickImage();
+                                                            if (imageUri) setEditingImageUri(imageUri);
+                                                        },
+                                                    },
+                                                    {
+                                                        text: 'Camera',
+                                                        onPress: async () => {
+                                                            const imageUri = await takePhoto();
+                                                            if (imageUri) setEditingImageUri(imageUri);
+                                                        },
+                                                    },
+                                                    { text: 'Hủy', style: 'cancel' },
+                                                ]
+                                            );
+                                        }}
+                                        disabled={editingUploading}
+                                    >
+                                        <Ionicons name="camera-outline" size={20} color="#007bff" />
+                                        <Text style={styles.selectImageButtonText}>{editingUploading ? 'Đang upload...' : 'Chọn ảnh'}</Text>
+                                    </TouchableOpacity>
+                                    <View style={styles.selectedImageContainer}>
+                                        <Image source={{ uri: editingImageUri || editPet.imageUrl || 'https://via.placeholder.com/150/cccccc/666666?text=Pet' }} style={styles.selectedImage} />
+                                        {editingImageUri && (
+                                            <TouchableOpacity style={styles.removeImageButton} onPress={() => setEditingImageUri(null)}>
+                                                <Ionicons name="close-circle" size={24} color="#ff4444" />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                </View>
+                                {/* Tên */}
+                                <TextInput style={styles.input} value={editPet.name} onChangeText={v => setEditPet({ ...editPet, name: v })} placeholder="Tên thú cưng" />
+                                {/* Loài */}
+                                <TextInput style={styles.input} value={editPet.species} onChangeText={v => setEditPet({ ...editPet, species: v })} placeholder="Loài" />
+                                {/* Giống */}
+                                <TextInput style={styles.input} value={editPet.breed} onChangeText={v => setEditPet({ ...editPet, breed: v })} placeholder="Giống (tùy chọn)" />
+                                {/* Ngày sinh */}
+                                <TouchableOpacity style={[styles.input, { justifyContent: 'center' }]} onPress={() => setShowDatePicker(true)}>
+                                    <Text style={{ color: editPet.birthDate ? '#222' : '#888', fontSize: 16 }}>{editPet.birthDate ? editPet.birthDate : 'Ngày sinh (YYYY-MM-DD, tùy chọn)'}</Text>
+                                </TouchableOpacity>
+                                {showDatePicker && (
+                                    <DateTimePicker
+                                        value={editPet.birthDate ? new Date(editPet.birthDate) : new Date()}
+                                        mode="date"
+                                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                        onChange={(event, selectedDate) => {
+                                            setShowDatePicker(false);
+                                            if (selectedDate) {
+                                                const yyyy = selectedDate.getFullYear();
+                                                const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                                                const dd = String(selectedDate.getDate()).padStart(2, '0');
+                                                setEditPet({ ...editPet, birthDate: `${yyyy}-${mm}-${dd}` });
+                                            }
+                                        }}
+                                        maximumDate={new Date()}
+                                    />
+                                )}
+                                {/* Giới tính */}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 15 }}>
+                                    <Text style={{ marginRight: 10, fontSize: 16 }}>Giới tính:</Text>
+                                    <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginRight: 20 }} onPress={() => setEditPet({ ...editPet, gender: 'Đực' })}>
+                                        <Ionicons name={editPet.gender === 'Đực' ? 'radio-button-on' : 'radio-button-off'} size={20} color="#007bff" />
+                                        <Text style={{ marginLeft: 5 }}>Đực</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={() => setEditPet({ ...editPet, gender: 'Cái' })}>
+                                        <Ionicons name={editPet.gender === 'Cái' ? 'radio-button-on' : 'radio-button-off'} size={20} color="#007bff" />
+                                        <Text style={{ marginLeft: 5 }}>Cái</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
+                                    <TouchableOpacity style={[styles.cancelButton, { marginRight: 10 }]} onPress={() => setEditMode(false)} disabled={editingUploading}>
+                                        <Text style={styles.cancelButtonText}>Hủy</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.saveButton} onPress={async () => {
+                                        let imageUrl = editPet.imageUrl;
+                                        if (editingImageUri) {
+                                            setEditingUploading(true);
+                                            try {
+                                                imageUrl = await uploadImageToCloudinary(editingImageUri);
+                                            } catch (e) {
+                                                Alert.alert('Lỗi', 'Không thể upload ảnh lên Cloudinary');
+                                            }
+                                            setEditingUploading(false);
+                                        }
+                                        try {
+                                            await apiClient.put(`/Pet/${selectedPet?.petId}`, {
+                                                name: editPet.name.trim(),
+                                                species: editPet.species.trim(),
+                                                breed: editPet.breed?.trim() || null,
+                                                birthDateString: editPet.birthDate || null,
+                                                imageUrl: imageUrl || null,
+                                                gender: editPet.gender || null,
+                                            });
+                                            await fetchPets();
+                                            setEditMode(false);
+                                            setDetailModalVisible(false);
+                                            Alert.alert('Thành công', 'Đã cập nhật thông tin thú cưng!');
+                                        } catch (error) {
+                                            let errorMessage = 'Đã xảy ra lỗi khi cập nhật.';
+                                            if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data) {
+                                                errorMessage = (error.response.data as { message?: string }).message || errorMessage;
+                                            }
+                                            Alert.alert('Lỗi', errorMessage);
+                                        }
+                                    }} disabled={editingUploading}>
+                                        {editingUploading ? <ActivityIndicator color="white" size="small" /> : <Text style={styles.saveButtonText}>Lưu</Text>}
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        )}
                     </View>
                 </View>
             </Modal>
@@ -550,5 +765,18 @@ const styles = StyleSheet.create({
         right: -8,
         backgroundColor: 'white',
         borderRadius: 12,
+    },
+    deleteButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ff4444',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+    },
+    deleteButtonText: {
+        color: 'white',
+        marginLeft: 8,
+        fontWeight: '600',
     },
 }); 
