@@ -2,7 +2,7 @@ import apiClient from '@/api/client';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ResizeMode, Video } from 'expo-av';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
@@ -12,11 +12,6 @@ const servicesData = [
     { id: '2', title: 'Tiêm phòng Vaccine', description: 'Bảo vệ thú cưng của bạn khỏi các bệnh truyền nhiễm nguy hiểm.', icon: 'shield-checkmark-outline' },
     { id: '3', title: 'Phẫu thuật', description: 'Thực hiện các ca phẫu thuật từ đơn giản đến phức tạp.', icon: 'cut-outline' },
     { id: '4', title: 'Spa & Grooming', description: 'Dịch vụ tắm, cắt tỉa lông, làm đẹp cho thú cưng.', icon: 'sparkles-outline' },
-];
-
-const newsData = [
-    { id: '1', title: 'Ngày hội thú cưng 2025', date: '25/07/2025', image: 'https://via.placeholder.com/400x200.png?text=Pet+Day+2025' },
-    { id: '2', title: 'Lưu ý khi dắt chó đi dạo mùa hè', date: '18/06/2025', image: 'https://via.placeholder.com/400x200.png?text=Summer+Walk' },
 ];
 
 const knowledgeData = [
@@ -118,47 +113,134 @@ const ServicesContent = () => {
 );
 };
 
-const NewsContent = () => (
-    <View style={styles.contentContainer}>
-        {newsData.map(item => (
-            <View key={item.id} style={[styles.card, styles.newsCard]}>
-                <Image source={{ uri: item.image }} style={styles.newsImage} />
-                <View style={styles.newsTextContainer}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.newsDate}>{item.date}</Text>
-                </View>
-            </View>
-        ))}
-    </View>
-);
+const NewsContent = () => {
+    const [news, setNews] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const navigation = useNavigation();
 
-const KnowledgeContent = () => (
-    <View style={styles.contentContainer}>
-        {knowledgeData.map(item => (
-            <View key={item.id} style={[styles.card, styles.knowledgeCard]}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.knowledgeCategory}>{item.category}</Text>
-            </View>
-        ))}
-    </View>
-);
+    useEffect(() => {
+        setLoading(true);
+        apiClient.get('/News?limit=20&page=1')
+            .then(res => {
+                const allNews = res.data.news || res.data.data || [];
+                const filtered = allNews.filter((n: any) =>
+                    ((n.tags || n.Tags || '').toLowerCase().includes('tintuc-sukien'))
+                );
+                setNews(filtered);
+            })
+            .catch(() => setNews([]))
+            .finally(() => setLoading(false));
+    }, []);
 
-const VideoContent = () => (
-     <View style={styles.contentContainer}>
-        {videoData.map(item => (
-            <View key={item.id} style={[styles.card, styles.videoCard]}>
-                <Image source={{ uri: item.thumbnail }} style={styles.videoThumbnail} />
-                <View style={styles.videoOverlay}>
-                    <Ionicons name="play-circle-outline" size={60} color="white" />
-                </View>
-                <View style={styles.videoTextContainer}>
-                    <Text style={styles.videoTitle}>{item.title}</Text>
-                    <Text style={styles.videoDuration}>{item.duration}</Text>
-                </View>
-            </View>
-        ))}
-    </View>
-);
+    if (loading) return <Text>Đang tải...</Text>;
+    if (news.length === 0) return <Text>Không có tin tức sự kiện.</Text>;
+
+    return (
+        <View style={styles.contentContainer}>
+            {news.map(item => (
+                <TouchableOpacity
+                    key={item.newsId}
+                    style={[styles.card, styles.newsCard]}
+                    onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}
+                >
+                    {item.imageUrl && (
+                        <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
+                    )}
+                    <View style={styles.newsTextContainer}>
+                        <Text style={styles.cardTitle}>{item.title}</Text>
+                        <Text style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</Text>
+                    </View>
+                </TouchableOpacity>
+            ))}
+        </View>
+    );
+};
+
+const KnowledgeContent = () => {
+    const [news, setNews] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const navigation = useNavigation();
+
+    useEffect(() => {
+        setLoading(true);
+        apiClient.get('/News?limit=20&page=1')
+            .then(res => {
+                const allNews = res.data.news || res.data.data || [];
+                const filtered = allNews.filter((n: any) =>
+                    ((n.tags || n.Tags || '').toLowerCase().includes('kienthuc'))
+                );
+                setNews(filtered);
+            })
+            .catch(() => setNews([]))
+            .finally(() => setLoading(false));
+    }, []);
+
+    if (loading) return <Text>Đang tải...</Text>;
+    if (news.length === 0) return <Text>Không có bài kiến thức.</Text>;
+
+    return (
+        <View style={styles.contentContainer}>
+            {news.map(item => (
+                <TouchableOpacity
+                    key={item.newsId}
+                    style={[styles.card, styles.newsCard]}
+                    onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}
+                >
+                    {item.imageUrl && (
+                        <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
+                    )}
+                    <View style={styles.newsTextContainer}>
+                        <Text style={styles.cardTitle}>{item.title}</Text>
+                        <Text style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</Text>
+                    </View>
+                </TouchableOpacity>
+            ))}
+        </View>
+    );
+};
+
+const VideoContent = () => {
+    const [news, setNews] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const navigation = useNavigation();
+
+    useEffect(() => {
+        setLoading(true);
+        apiClient.get('/News?limit=20&page=1')
+            .then(res => {
+                const allNews = res.data.news || res.data.data || [];
+                const filtered = allNews.filter((n: any) =>
+                    ((n.tags || n.Tags || '').toLowerCase().includes('video'))
+                );
+                setNews(filtered);
+            })
+            .catch(() => setNews([]))
+            .finally(() => setLoading(false));
+    }, []);
+
+    if (loading) return <Text>Đang tải...</Text>;
+    if (news.length === 0) return <Text>Không có video.</Text>;
+
+    return (
+        <View style={styles.contentContainer}>
+            {news.map(item => (
+                <TouchableOpacity
+                    key={item.newsId}
+                    style={[styles.card, styles.newsCard]}
+                    onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}
+                >
+                    {item.imageUrl && (
+                        <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
+                    )}
+                    <View style={styles.newsTextContainer}>
+                        <Text style={styles.cardTitle}>{item.title}</Text>
+                        <Text style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</Text>
+                    </View>
+                </TouchableOpacity>
+            ))}
+        </View>
+    );
+};
 
 const TABS = ['Dịch vụ', 'Tin tức-sự kiện', 'Kiến Thức', 'Video'];
 

@@ -6,6 +6,7 @@ import ServiceDetailScreen from '@/screens/ServiceDetailScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import TabNavigator from './TabNavigator';
+import NewsDetailScreen from '@/screens/NewsDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -18,6 +19,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="MyPets" component={MyPetsScreen} />
             <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
+            <Stack.Screen name="NewsDetail" component={NewsDetailScreen} />
         </Stack.Navigator>
     );
 } 
