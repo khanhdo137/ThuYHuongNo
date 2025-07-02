@@ -1,6 +1,10 @@
+import apiClient from '@/api/client';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { ResizeMode, Video } from 'expo-av';
 import React, { useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 
 // --- Mock Data ---
 const servicesData = [
@@ -26,21 +30,93 @@ const videoData = [
     { id: '2', title: '5 trò chơi vui nhộn cùng mèo cưng', duration: '08:15', thumbnail: 'https://via.placeholder.com/400x200.png?text=Cat+Games' },
 ];
 
+const serviceCategories = [
+    { key: 'Khám và điều trị', icon: 'pulse-outline', description: 'Chẩn đoán và điều trị các bệnh lý phổ biến ở thú cưng.' },
+    { key: 'Tiêm phòng Vaccine', icon: 'shield-checkmark-outline', description: 'Bảo vệ thú cưng của bạn khỏi các bệnh truyền nhiễm nguy hiểm.' },
+    { key: 'Phẫu thuật', icon: 'cut-outline', description: 'Thực hiện các ca phẫu thuật từ đơn giản đến phức tạp.' },
+    { key: 'Spa & Grooming', icon: 'sparkles-outline', description: 'Dịch vụ tắm, cắt tỉa lông, làm đẹp cho thú cưng.' },
+];
 
 // --- Content Components ---
-const ServicesContent = () => (
+const ServicesContent = () => {
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [services, setServices] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const navigation = useNavigation();
+
+    const handleSelectCategory = async (cat: string) => {
+        setSelectedCategory(cat);
+        setLoading(true);
+        try {
+            const res = await apiClient.get('/Service', { params: { category: cat } });
+            const list = res.data.data || res.data;
+            setServices(list);
+        } catch (err) {
+            setServices([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!selectedCategory) {
+        return (
     <View style={styles.contentContainer}>
-        {servicesData.map(item => (
-            <View key={item.id} style={[styles.card, styles.serviceCard]}>
+                {serviceCategories.map(item => (
+                    <TouchableOpacity key={item.key} style={[styles.card, styles.serviceCard]} onPress={() => handleSelectCategory(item.key)}>
                 <Ionicons name={item.icon as any} size={30} color="#007bff" style={styles.serviceIcon} />
                 <View style={styles.cardTextContainer}>
-                    <Text style={styles.cardTitle}>{item.title}</Text>
+                            <Text style={styles.cardTitle}>{item.key}</Text>
                     <Text style={styles.cardDescription}>{item.description}</Text>
                 </View>
+                    </TouchableOpacity>
+                ))}
             </View>
-        ))}
+        );
+    }
+
+    // Đang ở màn hình danh sách dịch vụ của 1 loại
+    return (
+        <View style={styles.contentContainer}>
+            <TouchableOpacity onPress={() => setSelectedCategory(null)} style={{ marginBottom: 15 }}>
+                <Text style={{ color: '#007bff', fontWeight: 'bold' }}>{'< Quay lại danh mục dịch vụ'}</Text>
+            </TouchableOpacity>
+            <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Dịch vụ: {selectedCategory}</Text>
+            {loading ? <Text>Đang tải...</Text> : (
+                services.length === 0 ? <Text>Không có dịch vụ nào.</Text> :
+                services.map(s => {
+                    const mediaLinks = extractMediaLinks(s.description || '');
+                    const firstMedia = mediaLinks[0];
+                    return (
+                        <TouchableOpacity
+                            key={s.serviceId}
+                            style={[styles.card, { flexDirection: 'column', alignItems: 'flex-start', padding: 15, marginBottom: 10 }]}
+                            onPress={() => (navigation as any).navigate('ServiceDetail', { service: s })}
+                        >
+                            {firstMedia && isImage(firstMedia) && (
+                                <Image source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} resizeMode="cover" />
+                            )}
+                            {firstMedia && isMp4(firstMedia) && (
+                                <Video source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
+                            )}
+                            {firstMedia && isYouTube(firstMedia) && (
+                                <WebView
+                                    source={{ uri: getYouTubeEmbedUrl(firstMedia) }}
+                                    style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }}
+                                />
+                            )}
+                            <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{s.name}</Text>
+                            <Text style={{ color: '#666', marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">{s.description}</Text>
+                            <View style={{ flexDirection: 'row', marginTop: 6 }}>
+                                <Text style={{ color: '#007bff', fontWeight: '600', marginRight: 15 }}>Giá: {s.priceText || 'Liên hệ'}</Text>
+                                <Text style={{ color: '#28a745', fontWeight: '600' }}>Thời lượng: {s.durationText || 'Liên hệ'}</Text>
+                            </View>
+                        </TouchableOpacity>
+                    );
+                })
+            )}
     </View>
 );
+};
 
 const NewsContent = () => (
     <View style={styles.contentContainer}>
@@ -268,3 +344,50 @@ const styles = StyleSheet.create({
         marginTop: 4,
     }
 }); 
+
+export function ServiceDetailScreen() {
+    const route = useRoute();
+    const navigation = useNavigation();
+    // @ts-ignore
+    const { service } = route.params || {};
+    if (!service) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text>Không tìm thấy thông tin dịch vụ.</Text></View>;
+    return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+            <View style={{ padding: 20, paddingTop: 0 }}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ position: 'absolute', top: 10, left: 10, zIndex: 2 }}>
+                    <Ionicons name="arrow-back" size={28} color="#007bff" />
+                </TouchableOpacity>
+                <View style={{ minHeight: 40 }} />
+                <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 10 }}>{service.name}</Text>
+                <Text style={{ color: '#007bff', fontWeight: '600', fontSize: 16, marginBottom: 5 }}>Giá: {service.priceText || 'Liên hệ'}</Text>
+                <Text style={{ color: '#28a745', fontWeight: '600', fontSize: 16, marginBottom: 5 }}>Thời lượng: {service.durationText || 'Liên hệ'}</Text>
+                {service.category && <Text style={{ color: '#888', fontSize: 15, marginBottom: 10 }}>Loại: {service.category}</Text>}
+                <Text style={{ fontSize: 16, color: '#333', marginTop: 10 }}>{service.description}</Text>
+            </View>
+        </SafeAreaView>
+    );
+} 
+
+function extractMediaLinks(text: string) {
+    const urlRegex = /(https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+\.(?:jpg|jpeg|png|gif|mp4)|https?:\/\/(?:www\.)?youtu(?:\.be|be\.com)\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+)/gi;
+    const matches = [...text.matchAll(urlRegex)];
+    return matches.map(m => m[0]);
+}
+
+function isImage(url: string) {
+    return url.match(/\.(jpg|jpeg|png|gif)$/i);
+}
+
+function isMp4(url: string) {
+    return url.match(/\.mp4$/i);
+}
+
+function isYouTube(url: string) {
+    return url.includes('youtube.com') || url.includes('youtu.be');
+}
+
+function getYouTubeEmbedUrl(url: string) {
+    const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w\-]+)/);
+    const videoId = ytMatch ? ytMatch[1] : '';
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+} 

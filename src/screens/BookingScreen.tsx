@@ -1,8 +1,9 @@
 import apiClient from '@/api/client';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useEffect, useState } from 'react';
-import { GestureResponderEvent, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 // Custom component for form rows
 interface FormRowProps {
@@ -33,7 +34,7 @@ const MockPicker = ({ icon, label, selectedValue, onPress }: MockPickerProps) =>
 };
 
 export default function BookingScreen() {
-    const [formData, setFormData] = useState({
+    const initialFormData = {
         phone: '',
         name: '',
         petSelection: 'Mới',
@@ -45,9 +46,10 @@ export default function BookingScreen() {
         date: '21/06/2025',
         time: '07:00',
         doctor: '',
-        service: '',
+        serviceId: '',
         notes: '',
-    });
+    };
+    const [formData, setFormData] = useState(initialFormData);
     
     const [isPickerVisible, setPickerVisible] = useState(false);
     const [pickerData, setPickerData] = useState<{items: string[], onSelect: (value: string) => void}>({ items: [], onSelect: () => {} });
@@ -55,6 +57,12 @@ export default function BookingScreen() {
     const [loading, setLoading] = useState(false);
     const [userInfo, setUserInfo] = useState<{customerName: string, phoneNumber: string} | null>(null);
     const [pets, setPets] = useState<Array<{ petId: number, name: string, species: string, age?: number }>>([]);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showTimePicker, setShowTimePicker] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
+    const [services, setServices] = useState<Array<{ serviceId: number, name: string, displayText: string }>>([]);
 
     useEffect(() => {
         const fetchDoctors = async () => {
@@ -83,8 +91,18 @@ export default function BookingScreen() {
                 console.error('Error fetching pets:', error);
             }
         };
+        const fetchServices = async () => {
+            try {
+                const response = await apiClient.get('/Service');
+                const serviceList = response.data.data || response.data;
+                setServices(serviceList.map((s: any) => ({ serviceId: s.serviceId, name: s.name, displayText: s.displayText })));
+            } catch (error) {
+                console.error('Error fetching services:', error);
+            }
+        };
         fetchDoctors();
         fetchPets();
+        fetchServices();
     }, []);
 
     useEffect(() => {
@@ -99,7 +117,7 @@ export default function BookingScreen() {
                         setFormData(prev => ({
                             ...prev,
                             phone: response.data.phoneNumber || '',
-                            name: response.data.customerName || '',
+                            name: response.data.customerName || response.data.customer?.customerName || '',
                         }));
                     }
                 }
@@ -128,7 +146,80 @@ export default function BookingScreen() {
     const petOptions = ['Mới', ...pets.map(pet => pet.name)];
     const speciesOptions = ['Chó', 'Mèo'];
     const doctorOptions = ['Không chọn riêng', ...doctors.map(d => d.displayText)];
-    const serviceOptions = ['Khám tổng quát nội khoa', 'Tiêm phòng', 'Siêu âm', 'Phẫu thuật'];
+    const serviceOptions = services.map(s => ({ label: s.displayText, value: s.serviceId.toString() }));
+
+    const handleSubmit = async () => {
+        setError(null);
+        setSuccess(null);
+        // Validate dữ liệu
+        if (!formData.phone || !formData.name || !formData.petName || !formData.species || !formData.date || !formData.time || !formData.serviceId) {
+            setError('Vui lòng điền đầy đủ thông tin bắt buộc.');
+            return;
+        }
+        setSubmitting(true);
+        try {
+            let petId: number | undefined;
+            // Nếu là thú cưng mới, tạo mới
+            if (formData.petSelection === 'Mới') {
+                const petPayload = {
+                    name: formData.petName,
+                    species: formData.species,
+                    breed: '',
+                    birthDateString: '',
+                    gender: '',
+                    imageUrl: '',
+                };
+                const petRes = await apiClient.post('/Pet', petPayload);
+                petId = petRes.data?.petId;
+            } else {
+                // Lấy petId từ danh sách
+                const selectedPet = pets.find(p => p.name === formData.petSelection);
+                petId = selectedPet?.petId;
+            }
+            if (!petId) {
+                setError('Không xác định được thú cưng.');
+                setSubmitting(false);
+                return;
+            }
+            // Lấy doctorId
+            let doctorId: number | null = null;
+            if (formData.doctor && formData.doctor !== 'Không chọn riêng') {
+                const doctorObj = doctors.find(d => d.displayText === formData.doctor);
+                doctorId = doctorObj?.doctorId ?? null;
+            }
+            // Lấy serviceId
+            const serviceId = parseInt(formData.serviceId, 10);
+            // Gộp ngày và giờ thành định dạng backend yêu cầu
+            const [dd, mm, yyyy] = formData.date.split('/');
+            const appointmentDate = `${yyyy}-${mm}-${dd}`; // yyyy-MM-dd
+            // Chuẩn bị payload
+            const payload = {
+                petId,
+                serviceId,
+                doctorId: doctorId || undefined,
+                appointmentDate,
+                appointmentTime: formData.time, // "HH:mm"
+                weight: formData.weight ? parseFloat(formData.weight) : undefined,
+                age: formData.age ? parseInt(formData.age) : undefined,
+                isNewPet: formData.petSelection === 'Mới',
+                notes: formData.notes,
+            };
+            console.log('Payload gửi lên /Appointment:', payload);
+            await apiClient.post('/Appointment', payload);
+            setSuccess('Đặt lịch thành công!');
+            setFormData(initialFormData);
+        } catch (err: any) {
+            if (err.response && err.response.data) {
+                setError('Lỗi: ' + JSON.stringify(err.response.data));
+                console.error('API error:', err.response.data);
+            } else {
+                setError('Có lỗi xảy ra khi đặt lịch. Vui lòng thử lại.');
+                console.error(err);
+            }
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -204,10 +295,47 @@ export default function BookingScreen() {
 
                     <FormRow label="Thời gian hẹn">
                         <View style={styles.row}>
-                            {/* In a real app, use @react-native-community/datetimepicker */}
-                            <MockPicker icon="calendar-outline" label="Chọn ngày" selectedValue={formData.date} onPress={() => alert('Date picker would open here!')} />
-                            <MockPicker icon="time-outline" label="Chọn giờ" selectedValue={formData.time} onPress={() => alert('Time picker would open here!')} />
+                            <TouchableOpacity style={[styles.pickerContainer, { flex: 1, marginRight: 5 }]} onPress={() => setShowDatePicker(true)}>
+                                <Ionicons name="calendar-outline" size={20} color="#666" style={{ marginRight: 8 }} />
+                                <Text style={styles.pickerText}>{formData.date || 'Chọn ngày'}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.pickerContainer, { flex: 1, marginLeft: 5 }]} onPress={() => setShowTimePicker(true)}>
+                                <Ionicons name="time-outline" size={20} color="#666" style={{ marginRight: 8 }} />
+                                <Text style={styles.pickerText}>{formData.time || 'Chọn giờ'}</Text>
+                            </TouchableOpacity>
                         </View>
+                        {showDatePicker && (
+                            <DateTimePicker
+                                value={formData.date ? new Date(formData.date.split('/').reverse().join('-')) : new Date()}
+                                mode="date"
+                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                onChange={(event, selectedDate) => {
+                                    setShowDatePicker(false);
+                                    if (selectedDate) {
+                                        const dd = String(selectedDate.getDate()).padStart(2, '0');
+                                        const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                                        const yyyy = selectedDate.getFullYear();
+                                        handleInputChange('date', `${dd}/${mm}/${yyyy}`);
+                                    }
+                                }}
+                                minimumDate={new Date()}
+                            />
+                        )}
+                        {showTimePicker && (
+                            <DateTimePicker
+                                value={formData.time ? new Date(`1970-01-01T${formData.time}`) : new Date()}
+                                mode="time"
+                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                onChange={(event, selectedTime) => {
+                                    setShowTimePicker(false);
+                                    if (selectedTime) {
+                                        const hh = String(selectedTime.getHours()).padStart(2, '0');
+                                        const mm = String(selectedTime.getMinutes()).padStart(2, '0');
+                                        handleInputChange('time', `${hh}:${mm}`);
+                                    }
+                                }}
+                            />
+                        )}
                     </FormRow>
 
                     <FormRow label="Bác sĩ">
@@ -221,8 +349,11 @@ export default function BookingScreen() {
                     <FormRow label="Dịch vụ">
                         <MockPicker 
                             label="Chọn dịch vụ" 
-                            selectedValue={formData.service} 
-                            onPress={() => openPicker(serviceOptions, (val) => handleInputChange('service', val))}
+                            selectedValue={services.find(s => s.serviceId.toString() === formData.serviceId)?.displayText || ''} 
+                            onPress={() => openPicker(serviceOptions.map(opt => opt.label), (val) => {
+                                const selected = serviceOptions.find(opt => opt.label === val);
+                                handleInputChange('serviceId', selected ? selected.value : '');
+                            })}
                         />
                     </FormRow>
 
@@ -230,8 +361,8 @@ export default function BookingScreen() {
                         <TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => handleInputChange('notes', val)} placeholder="Thêm ghi chú..." multiline />
                     </FormRow>
 
-                    <TouchableOpacity style={styles.submitButton} onPress={(event: GestureResponderEvent) => alert('Đã gửi thông tin đặt lịch!')}>
-                        <Text style={styles.submitButtonText}>Đặt lịch</Text>
+                    <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={submitting}>
+                        <Text style={styles.submitButtonText}>{submitting ? 'Đang gửi...' : 'Đặt lịch'}</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -260,6 +391,8 @@ export default function BookingScreen() {
                     </TouchableWithoutFeedback>
                 </TouchableOpacity>
             </Modal>
+            {error && <Text style={{ color: 'red', textAlign: 'center', marginTop: 10 }}>{error}</Text>}
+            {success && <Text style={{ color: 'green', textAlign: 'center', marginTop: 10 }}>{success}</Text>}
         </SafeAreaView>
     );
 }

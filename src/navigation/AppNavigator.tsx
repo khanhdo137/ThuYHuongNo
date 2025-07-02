@@ -2,6 +2,7 @@ import ChatBotScreen from '@/screens/ChatBotScreen';
 import LoginScreen from '@/screens/LoginScreen';
 import MyPetsScreen from '@/screens/MyPetsScreen';
 import RegisterScreen from '@/screens/RegisterScreen';
+import ServiceDetailScreen from '@/screens/ServiceDetailScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import TabNavigator from './TabNavigator';
@@ -16,6 +17,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="MyPets" component={MyPetsScreen} />
+            <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
         </Stack.Navigator>
     );
 } 

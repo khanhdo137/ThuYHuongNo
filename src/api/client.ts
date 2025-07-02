@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 // API URL, sử dụng IP của máy tính để điện thoại thật có thể kết nối
-const API_BASE_URL = 'http://192.168.1.8:5074/api';
+const API_BASE_URL = 'http://192.168.1.5:5074/api';
 
 const client = axios.create({
   baseURL: API_BASE_URL,
