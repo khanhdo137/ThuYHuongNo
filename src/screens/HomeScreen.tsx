@@ -6,6 +6,9 @@ import React, { useEffect, useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
+// --- PAGE_SIZE dùng cho tất cả các content ---
+const PAGE_SIZE = 10;
+
 // --- Mock Data ---
 const servicesData = [
     { id: '1', title: 'Khám và điều trị', description: 'Chẩn đoán và điều trị các bệnh lý phổ biến ở thú cưng.', icon: 'pulse-outline' },
@@ -33,36 +36,55 @@ const serviceCategories = [
 ];
 
 // --- Content Components ---
-const ServicesContent = () => {
+const ServicesContent = ({ resetSignal }: { resetSignal: number }) => {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [services, setServices] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const navigation = useNavigation();
 
-    const handleSelectCategory = async (cat: string) => {
-        setSelectedCategory(cat);
+    const fetchServices = async (cat: string, pageNum = 1) => {
         setLoading(true);
         try {
-            const res = await apiClient.get('/Service', { params: { category: cat } });
-            const list = res.data.data || res.data;
+            const res = await apiClient.get('/Service', { params: { category: cat, page: pageNum, limit: PAGE_SIZE } });
+            const list = res.data.data || res.data.services || res.data || [];
             setServices(list);
+            setTotalPages(res.data.pagination?.totalPages || 1);
         } catch (err) {
             setServices([]);
+            setTotalPages(1);
         } finally {
             setLoading(false);
         }
     };
 
+    useEffect(() => {
+        setSelectedCategory(null);
+        setPage(1);
+    }, [resetSignal]);
+
+    useEffect(() => {
+        if (selectedCategory) {
+            fetchServices(selectedCategory, page);
+        }
+    }, [selectedCategory, page]);
+
+    const handleSelectCategory = (cat: string) => {
+        setSelectedCategory(cat);
+        setPage(1);
+    };
+
     if (!selectedCategory) {
         return (
-    <View style={styles.contentContainer}>
+            <View style={styles.contentContainer}>
                 {serviceCategories.map(item => (
                     <TouchableOpacity key={item.key} style={[styles.card, styles.serviceCard]} onPress={() => handleSelectCategory(item.key)}>
-                <Ionicons name={item.icon as any} size={30} color="#007bff" style={styles.serviceIcon} />
-                <View style={styles.cardTextContainer}>
+                        <Ionicons name={item.icon as any} size={30} color="#007bff" style={styles.serviceIcon} />
+                        <View style={styles.cardTextContainer}>
                             <Text style={styles.cardTitle}>{item.key}</Text>
-                    <Text style={styles.cardDescription}>{item.description}</Text>
-                </View>
+                            <Text style={styles.cardDescription}>{item.description}</Text>
+                        </View>
                     </TouchableOpacity>
                 ))}
             </View>
@@ -76,110 +98,93 @@ const ServicesContent = () => {
                 <Text style={{ color: '#007bff', fontWeight: 'bold' }}>{'< Quay lại danh mục dịch vụ'}</Text>
             </TouchableOpacity>
             <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Dịch vụ: {selectedCategory}</Text>
-            {loading ? <Text>Đang tải...</Text> : (
-                services.length === 0 ? <Text>Không có dịch vụ nào.</Text> :
-                services.map(s => {
-                    const mediaLinks = extractMediaLinks(s.description || '');
-                    const firstMedia = mediaLinks[0];
-                    return (
-                        <TouchableOpacity
-                            key={s.serviceId}
-                            style={[styles.card, { flexDirection: 'column', alignItems: 'flex-start', padding: 15, marginBottom: 10 }]}
-                            onPress={() => (navigation as any).navigate('ServiceDetail', { service: s })}
-                        >
-                            {firstMedia && isImage(firstMedia) && (
-                                <Image source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} resizeMode="cover" />
-                            )}
-                            {firstMedia && isMp4(firstMedia) && (
-                                <Video source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
-                            )}
-                            {firstMedia && isYouTube(firstMedia) && (
-                                <WebView
-                                    source={{ uri: getYouTubeEmbedUrl(firstMedia) }}
-                                    style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }}
-                                />
-                            )}
-                            <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{s.name}</Text>
-                            <Text style={{ color: '#666', marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">{s.description}</Text>
-                            <View style={{ flexDirection: 'row', marginTop: 6 }}>
-                                <Text style={{ color: '#007bff', fontWeight: '600', marginRight: 15 }}>Giá: {s.priceText || 'Liên hệ'}</Text>
-                                <Text style={{ color: '#28a745', fontWeight: '600' }}>Thời lượng: {s.durationText || 'Liên hệ'}</Text>
-                            </View>
-                        </TouchableOpacity>
-                    );
-                })
-            )}
-    </View>
-);
-};
-
-const NewsContent = () => {
-    const [news, setNews] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const navigation = useNavigation();
-
-    useEffect(() => {
-        setLoading(true);
-        apiClient.get('/News?limit=20&page=1')
-            .then(res => {
-                const allNews = res.data.news || res.data.data || [];
-                const filtered = allNews.filter((n: any) =>
-                    ((n.tags || n.Tags || '').toLowerCase().includes('tintuc-sukien'))
+            {loading && <Text>Đang tải...</Text>}
+            {!loading && services.length === 0 && <Text>Không có dịch vụ nào.</Text>}
+            {services.map(s => {
+                const mediaLinks = extractMediaLinks(s.description || '');
+                const firstMedia = mediaLinks[0];
+                return (
+                    <TouchableOpacity
+                        key={s.serviceId}
+                        style={[styles.card, { flexDirection: 'column', alignItems: 'flex-start', padding: 15, marginBottom: 10 }]}
+                        onPress={() => (navigation as any).navigate('ServiceDetail', { service: s })}
+                    >
+                        {firstMedia && isImage(firstMedia) && (
+                            <Image source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} resizeMode="cover" />
+                        )}
+                        {firstMedia && isMp4(firstMedia) && (
+                            <Video source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
+                        )}
+                        {firstMedia && isYouTube(firstMedia) && (
+                            <WebView
+                                source={{ uri: getYouTubeEmbedUrl(firstMedia) }}
+                                style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }}
+                            />
+                        )}
+                        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{s.name}</Text>
+                        <Text style={{ color: '#666', marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">{s.description}</Text>
+                        <View style={{ flexDirection: 'row', marginTop: 6 }}>
+                            <Text style={{ color: '#007bff', fontWeight: '600', marginRight: 15 }}>Giá: {s.priceText || 'Liên hệ'}</Text>
+                            <Text style={{ color: '#28a745', fontWeight: '600' }}>Thời lượng: {s.durationText || 'Liên hệ'}</Text>
+                        </View>
+                    </TouchableOpacity>
                 );
-                setNews(filtered);
-            })
-            .catch(() => setNews([]))
-            .finally(() => setLoading(false));
-    }, []);
-
-    if (loading) return <Text>Đang tải...</Text>;
-    if (news.length === 0) return <Text>Không có tin tức sự kiện.</Text>;
-
-    return (
-        <View style={styles.contentContainer}>
-            {news.map(item => (
+            })}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
                 <TouchableOpacity
-                    key={item.newsId}
-                    style={[styles.card, styles.newsCard]}
-                    onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}
+                    onPress={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    style={{ marginHorizontal: 10, opacity: page === 1 ? 0.5 : 1 }}
                 >
-                    {item.imageUrl && (
-                        <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
-                    )}
-                    <View style={styles.newsTextContainer}>
-                        <Text style={styles.cardTitle}>{item.title}</Text>
-                        <Text style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</Text>
-                    </View>
+                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang trước</Text>
                 </TouchableOpacity>
-            ))}
+                <Text style={{ alignSelf: 'center', fontWeight: 'bold' }}>{page} / {totalPages}</Text>
+                <TouchableOpacity
+                    onPress={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    style={{ marginHorizontal: 10, opacity: page === totalPages ? 0.5 : 1 }}
+                >
+                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang sau</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
 
-const KnowledgeContent = () => {
+
+const NewsContent = ({ resetSignal }: { resetSignal: number }) => {
     const [news, setNews] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const navigation = useNavigation();
 
-    useEffect(() => {
+    const fetchNews = async (pageNum = 1) => {
         setLoading(true);
-        apiClient.get('/News?limit=20&page=1')
-            .then(res => {
-                const allNews = res.data.news || res.data.data || [];
-                const filtered = allNews.filter((n: any) =>
-                    ((n.tags || n.Tags || '').toLowerCase().includes('kienthuc'))
-                );
-                setNews(filtered);
-            })
-            .catch(() => setNews([]))
-            .finally(() => setLoading(false));
-    }, []);
+        try {
+            const res = await apiClient.get('/News/by-tag', { params: { tag: 'Tintuc-sukien', page: pageNum, limit: PAGE_SIZE } });
+            setNews(res.data.news || []);
+            setTotalPages(res.data.pagination?.totalPages || 1);
+        } catch {
+            setNews([]);
+            setTotalPages(1);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    if (loading) return <Text>Đang tải...</Text>;
-    if (news.length === 0) return <Text>Không có bài kiến thức.</Text>;
+    useEffect(() => {
+        setPage(1);
+    }, [resetSignal]);
+
+    useEffect(() => {
+        fetchNews(page);
+    }, [page]);
 
     return (
         <View style={styles.contentContainer}>
+            {loading && <Text>Đang tải...</Text>}
+            {!loading && news.length === 0 && <Text>Không có tin tức sự kiện.</Text>}
             {news.map(item => (
                 <TouchableOpacity
                     key={item.newsId}
@@ -195,34 +200,60 @@ const KnowledgeContent = () => {
                     </View>
                 </TouchableOpacity>
             ))}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
+                <TouchableOpacity
+                    onPress={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    style={{ marginHorizontal: 10, opacity: page === 1 ? 0.5 : 1 }}
+                >
+                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang trước</Text>
+                </TouchableOpacity>
+                <Text style={{ alignSelf: 'center', fontWeight: 'bold' }}>{page} / {totalPages}</Text>
+                <TouchableOpacity
+                    onPress={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    style={{ marginHorizontal: 10, opacity: page === totalPages ? 0.5 : 1 }}
+                >
+                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang sau</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
 
-const VideoContent = () => {
+const KnowledgeContent = ({ resetSignal }: { resetSignal: number }) => {
     const [news, setNews] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const navigation = useNavigation();
 
-    useEffect(() => {
+    const fetchNews = async (pageNum = 1) => {
         setLoading(true);
-        apiClient.get('/News?limit=20&page=1')
-            .then(res => {
-                const allNews = res.data.news || res.data.data || [];
-                const filtered = allNews.filter((n: any) =>
-                    ((n.tags || n.Tags || '').toLowerCase().includes('video'))
-                );
-                setNews(filtered);
-            })
-            .catch(() => setNews([]))
-            .finally(() => setLoading(false));
-    }, []);
+        try {
+            const res = await apiClient.get('/News/by-tag', { params: { tag: 'Kienthuc', page: pageNum, limit: PAGE_SIZE } });
+            setNews(res.data.news || []);
+            setTotalPages(res.data.pagination?.totalPages || 1);
+        } catch {
+            setNews([]);
+            setTotalPages(1);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    if (loading) return <Text>Đang tải...</Text>;
-    if (news.length === 0) return <Text>Không có video.</Text>;
+    useEffect(() => {
+        setPage(1);
+    }, [resetSignal]);
+
+    useEffect(() => {
+        fetchNews(page);
+    }, [page]);
 
     return (
         <View style={styles.contentContainer}>
+            {loading && <Text>Đang tải...</Text>}
+            {!loading && news.length === 0 && <Text>Không có bài kiến thức.</Text>}
             {news.map(item => (
                 <TouchableOpacity
                     key={item.newsId}
@@ -238,6 +269,92 @@ const VideoContent = () => {
                     </View>
                 </TouchableOpacity>
             ))}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
+                <TouchableOpacity
+                    onPress={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    style={{ marginHorizontal: 10, opacity: page === 1 ? 0.5 : 1 }}
+                >
+                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang trước</Text>
+                </TouchableOpacity>
+                <Text style={{ alignSelf: 'center', fontWeight: 'bold' }}>{page} / {totalPages}</Text>
+                <TouchableOpacity
+                    onPress={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    style={{ marginHorizontal: 10, opacity: page === totalPages ? 0.5 : 1 }}
+                >
+                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang sau</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+};
+
+const VideoContent = ({ resetSignal }: { resetSignal: number }) => {
+    const [news, setNews] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const navigation = useNavigation();
+
+    const fetchNews = async (pageNum = 1) => {
+        setLoading(true);
+        try {
+            const res = await apiClient.get('/News/by-tag', { params: { tag: 'Video', page: pageNum, limit: PAGE_SIZE } });
+            setNews(res.data.news || []);
+            setTotalPages(res.data.pagination?.totalPages || 1);
+        } catch {
+            setNews([]);
+            setTotalPages(1);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        setPage(1);
+    }, [resetSignal]);
+
+    useEffect(() => {
+        fetchNews(page);
+    }, [page]);
+
+    return (
+        <View style={styles.contentContainer}>
+            {loading && <Text>Đang tải...</Text>}
+            {!loading && news.length === 0 && <Text>Không có video.</Text>}
+            {news.map(item => (
+                <TouchableOpacity
+                    key={item.newsId}
+                    style={[styles.card, styles.newsCard]}
+                    onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}
+                >
+                    {item.imageUrl && (
+                        <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
+                    )}
+                    <View style={styles.newsTextContainer}>
+                        <Text style={styles.cardTitle}>{item.title}</Text>
+                        <Text style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</Text>
+                    </View>
+                </TouchableOpacity>
+            ))}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
+                <TouchableOpacity
+                    onPress={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    style={{ marginHorizontal: 10, opacity: page === 1 ? 0.5 : 1 }}
+                >
+                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang trước</Text>
+                </TouchableOpacity>
+                <Text style={{ alignSelf: 'center', fontWeight: 'bold' }}>{page} / {totalPages}</Text>
+                <TouchableOpacity
+                    onPress={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    style={{ marginHorizontal: 10, opacity: page === totalPages ? 0.5 : 1 }}
+                >
+                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang sau</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
@@ -246,17 +363,18 @@ const TABS = ['Dịch vụ', 'Tin tức-sự kiện', 'Kiến Thức', 'Video'];
 
 export default function HomeScreen() {
     const [activeTab, setActiveTab] = useState(TABS[0]);
+    const [resetSignal, setResetSignal] = useState(0);
 
     const renderContent = () => {
         switch (activeTab) {
             case 'Dịch vụ':
-                return <ServicesContent />;
+                return <ServicesContent resetSignal={resetSignal} />;
             case 'Tin tức-sự kiện':
-                return <NewsContent />;
+                return <NewsContent resetSignal={resetSignal} />;
             case 'Kiến Thức':
-                return <KnowledgeContent />;
+                return <KnowledgeContent resetSignal={resetSignal} />;
             case 'Video':
-                return <VideoContent />;
+                return <VideoContent resetSignal={resetSignal} />;
             default:
                 return null;
         }
@@ -273,7 +391,10 @@ export default function HomeScreen() {
                         <TouchableOpacity
                             key={tab}
                             style={[styles.tabItem, activeTab === tab && styles.activeTabItem]}
-                            onPress={() => setActiveTab(tab)}
+                            onPress={() => {
+                                setActiveTab(tab);
+                                setResetSignal(s => s + 1);
+                            }}
                         >
                             <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
                         </TouchableOpacity>
