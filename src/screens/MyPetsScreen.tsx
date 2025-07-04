@@ -372,6 +372,16 @@ export default function MyPetsScreen() {
                         </TouchableOpacity>
                         {selectedPet && !editMode && (
                             <>
+                                <TouchableOpacity
+                                    style={[styles.addButton, { marginBottom: 10 }]}
+                                    onPress={() => {
+                                        setDetailModalVisible(false);
+                                        (navigation as any).navigate('MedicalHistory', { pet: selectedPet });
+                                    }}
+                                >
+                                    <Ionicons name="document-text-outline" size={20} color="white" />
+                                    <Text style={styles.addButtonText}>Xem hồ sơ bệnh án</Text>
+                                </TouchableOpacity>
                                 <Image source={{ uri: selectedPet.imageUrl || 'https://via.placeholder.com/150/cccccc/666666?text=Pet' }} style={[styles.selectedImage, { alignSelf: 'center', marginBottom: 15 }]} />
                                 <Text style={{ fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 }}>{selectedPet.name}</Text>
                                 <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 5 }}>Loài: {selectedPet.species}</Text>

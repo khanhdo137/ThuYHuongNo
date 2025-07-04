@@ -77,14 +77,14 @@ const ServicesContent = ({ resetSignal }: { resetSignal: number }) => {
 
     if (!selectedCategory) {
         return (
-            <View style={styles.contentContainer}>
+    <View style={styles.contentContainer}>
                 {serviceCategories.map(item => (
                     <TouchableOpacity key={item.key} style={[styles.card, styles.serviceCard]} onPress={() => handleSelectCategory(item.key)}>
-                        <Ionicons name={item.icon as any} size={30} color="#007bff" style={styles.serviceIcon} />
-                        <View style={styles.cardTextContainer}>
+                <Ionicons name={item.icon as any} size={30} color="#007bff" style={styles.serviceIcon} />
+                <View style={styles.cardTextContainer}>
                             <Text style={styles.cardTitle}>{item.key}</Text>
-                            <Text style={styles.cardDescription}>{item.description}</Text>
-                        </View>
+                    <Text style={styles.cardDescription}>{item.description}</Text>
+                </View>
                     </TouchableOpacity>
                 ))}
             </View>
@@ -101,34 +101,34 @@ const ServicesContent = ({ resetSignal }: { resetSignal: number }) => {
             {loading && <Text>Đang tải...</Text>}
             {!loading && services.length === 0 && <Text>Không có dịch vụ nào.</Text>}
             {services.map(s => {
-                const mediaLinks = extractMediaLinks(s.description || '');
-                const firstMedia = mediaLinks[0];
-                return (
-                    <TouchableOpacity
-                        key={s.serviceId}
-                        style={[styles.card, { flexDirection: 'column', alignItems: 'flex-start', padding: 15, marginBottom: 10 }]}
-                        onPress={() => (navigation as any).navigate('ServiceDetail', { service: s })}
-                    >
-                        {firstMedia && isImage(firstMedia) && (
-                            <Image source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} resizeMode="cover" />
-                        )}
-                        {firstMedia && isMp4(firstMedia) && (
-                            <Video source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
-                        )}
-                        {firstMedia && isYouTube(firstMedia) && (
-                            <WebView
-                                source={{ uri: getYouTubeEmbedUrl(firstMedia) }}
-                                style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }}
-                            />
-                        )}
-                        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{s.name}</Text>
-                        <Text style={{ color: '#666', marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">{s.description}</Text>
-                        <View style={{ flexDirection: 'row', marginTop: 6 }}>
-                            <Text style={{ color: '#007bff', fontWeight: '600', marginRight: 15 }}>Giá: {s.priceText || 'Liên hệ'}</Text>
-                            <Text style={{ color: '#28a745', fontWeight: '600' }}>Thời lượng: {s.durationText || 'Liên hệ'}</Text>
-                        </View>
-                    </TouchableOpacity>
-                );
+                    const mediaLinks = extractMediaLinks(s.description || '');
+                    const firstMedia = mediaLinks[0];
+                    return (
+                        <TouchableOpacity
+                            key={s.serviceId}
+                            style={[styles.card, { flexDirection: 'column', alignItems: 'flex-start', padding: 15, marginBottom: 10 }]}
+                            onPress={() => (navigation as any).navigate('ServiceDetail', { service: s })}
+                        >
+                            {firstMedia && isImage(firstMedia) && (
+                                <Image source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} resizeMode="cover" />
+                            )}
+                            {firstMedia && isMp4(firstMedia) && (
+                                <Video source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
+                            )}
+                            {firstMedia && isYouTube(firstMedia) && (
+                                <WebView
+                                    source={{ uri: getYouTubeEmbedUrl(firstMedia) }}
+                                    style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }}
+                                />
+                            )}
+                            <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{s.name}</Text>
+                            <Text style={{ color: '#666', marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">{s.description}</Text>
+                            <View style={{ flexDirection: 'row', marginTop: 6 }}>
+                                <Text style={{ color: '#007bff', fontWeight: '600', marginRight: 15 }}>Giá: {s.priceText || 'Liên hệ'}</Text>
+                                <Text style={{ color: '#28a745', fontWeight: '600' }}>Thời lượng: {s.durationText || 'Liên hệ'}</Text>
+                            </View>
+                        </TouchableOpacity>
+                    );
             })}
             <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
                 <TouchableOpacity
@@ -147,8 +147,8 @@ const ServicesContent = ({ resetSignal }: { resetSignal: number }) => {
                     <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang sau</Text>
                 </TouchableOpacity>
             </View>
-        </View>
-    );
+    </View>
+);
 };
 
 

@@ -1,12 +1,15 @@
 import ChatBotScreen from '@/screens/ChatBotScreen';
 import LoginScreen from '@/screens/LoginScreen';
+import MedicalHistoryScreen from '@/screens/MedicalHistoryScreen';
+import MyAppointmentsScreen from '@/screens/MyAppointmentsScreen';
 import MyPetsScreen from '@/screens/MyPetsScreen';
+import NewsDetailScreen from '@/screens/NewsDetailScreen';
+import NotificationScreen from '@/screens/NotificationScreen';
 import RegisterScreen from '@/screens/RegisterScreen';
 import ServiceDetailScreen from '@/screens/ServiceDetailScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import TabNavigator from './TabNavigator';
-import NewsDetailScreen from '@/screens/NewsDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +23,9 @@ export default function AppNavigator() {
             <Stack.Screen name="MyPets" component={MyPetsScreen} />
             <Stack.Screen name="ServiceDetail" component={ServiceDetailScreen} />
             <Stack.Screen name="NewsDetail" component={NewsDetailScreen} />
+            <Stack.Screen name="MyAppointments" component={MyAppointmentsScreen} options={{ title: 'Lịch sử & hoạt động' }} />
+            <Stack.Screen name="MedicalHistory" component={MedicalHistoryScreen} options={{ title: 'Hồ sơ bệnh án' }} />
+            <Stack.Screen name="Notification" component={NotificationScreen} options={{ title: 'Thông báo' }} />
         </Stack.Navigator>
     );
 } 
