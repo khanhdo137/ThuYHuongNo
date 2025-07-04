@@ -391,29 +391,30 @@ export default function BookingScreen() {
                     </TouchableWithoutFeedback>
                 </TouchableOpacity>
             </Modal>
-            {error && <Text style={{ color: 'red', textAlign: 'center', marginTop: 10 }}>{error}</Text>}
-            {success && <Text style={{ color: 'green', textAlign: 'center', marginTop: 10 }}>{success}</Text>}
+            {error && <Text style={styles.errorText}>{error}</Text>}
+            {success && <Text style={styles.successText}>{success}</Text>}
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#f8f9fa' },
+    safeArea: { flex: 1, backgroundColor: '#f5f8ff' },
     container: { paddingBottom: 30 },
-    header: { padding: 20, alignItems: 'center', backgroundColor: 'white' },
-    headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#333' },
-    headerSubtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 8 },
-    formContainer: { paddingHorizontal: 20, marginTop: 10 },
-    formRow: { marginBottom: 15 },
-    label: { fontSize: 16, fontWeight: '500', color: '#495057', marginBottom: 8 },
+    header: { padding: 24, alignItems: 'center', backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' },
+    headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#007bff', letterSpacing: 1, marginBottom: 4 },
+    headerSubtitle: { fontSize: 15, color: '#666', textAlign: 'center', marginTop: 8 },
+    formContainer: { paddingHorizontal: 20, marginTop: 18, backgroundColor: 'white', borderRadius: 16, shadowColor: '#007bff', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3, paddingVertical: 18 },
+    formRow: { marginBottom: 18 },
+    label: { fontSize: 16, fontWeight: '600', color: '#495057', marginBottom: 8 },
     input: {
-        backgroundColor: 'white',
+        backgroundColor: '#f8fafd',
         paddingHorizontal: 15,
         paddingVertical: 12,
-        borderRadius: 8,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: '#ced4da',
         fontSize: 16,
+        color: '#222',
     },
     textArea: {
         height: 100,
@@ -431,28 +432,34 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: 'white',
+        backgroundColor: '#f8fafd',
         paddingHorizontal: 15,
         paddingVertical: 12,
-        borderRadius: 8,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: '#ced4da',
         flex: 1,
     },
     pickerText: {
         fontSize: 16,
+        color: '#333',
     },
     submitButton: {
         backgroundColor: '#007bff',
-        paddingVertical: 15,
-        borderRadius: 8,
+        paddingVertical: 16,
+        borderRadius: 12,
         alignItems: 'center',
-        marginTop: 20,
+        marginTop: 24,
+        shadowColor: '#007bff',
+        shadowOpacity: 0.10,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
     },
     submitButtonText: {
         color: 'white',
-        fontSize: 18,
+        fontSize: 19,
         fontWeight: 'bold',
+        letterSpacing: 0.5,
     },
     // Modal Styles
     modalContainer: {
@@ -465,45 +472,58 @@ const styles = StyleSheet.create({
         width: '80%',
         maxHeight: '60%',
         backgroundColor: 'white',
-        borderRadius: 10,
+        borderRadius: 14,
         paddingHorizontal: 20,
         paddingTop: 20,
         paddingBottom: 10,
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.18,
+        shadowRadius: 6,
+        elevation: 6,
     },
     modalTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 'bold',
         marginBottom: 15,
         textAlign: 'center',
+        color: '#007bff',
     },
     modalItem: {
-        paddingVertical: 14,
+        paddingVertical: 16,
         alignItems: 'center',
         borderTopWidth: 1,
         borderTopColor: '#f0f0f0',
     },
     modalItemText: {
-        fontSize: 16,
+        fontSize: 17,
         color: '#333',
     },
     modalCloseButton: {
-        marginTop: 10,
-        paddingVertical: 12,
+        marginTop: 12,
+        paddingVertical: 14,
         alignItems: 'center',
         borderTopWidth: 1,
         borderTopColor: '#f0f0f0',
     },
     modalCloseButtonText: {
-        fontSize: 16,
+        fontSize: 17,
         color: '#007bff',
-        fontWeight: '600'
+        fontWeight: '600',
+    },
+    // Error/Success
+    errorText: {
+        color: '#e74c3c',
+        textAlign: 'center',
+        marginTop: 14,
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    successText: {
+        color: '#27ae60',
+        textAlign: 'center',
+        marginTop: 14,
+        fontWeight: 'bold',
+        fontSize: 16,
     }
 }); 

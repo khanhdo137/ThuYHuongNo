@@ -3,7 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ResizeMode, Video } from 'expo-av';
 import React, { useEffect, useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 // --- PAGE_SIZE dùng cho tất cả các content ---
@@ -98,7 +98,12 @@ const ServicesContent = ({ resetSignal }: { resetSignal: number }) => {
                 <Text style={{ color: '#007bff', fontWeight: 'bold' }}>{'< Quay lại danh mục dịch vụ'}</Text>
             </TouchableOpacity>
             <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Dịch vụ: {selectedCategory}</Text>
-            {loading && <Text>Đang tải...</Text>}
+            {loading && (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginVertical: 30 }}>
+    <ActivityIndicator size="large" color="#007bff" />
+    <Text style={{ marginTop: 10, color: '#007bff' }}>Đang tải dữ liệu...</Text>
+  </View>
+)}
             {!loading && services.length === 0 && <Text>Không có dịch vụ nào.</Text>}
             {services.map(s => {
                     const mediaLinks = extractMediaLinks(s.description || '');
@@ -134,16 +139,39 @@ const ServicesContent = ({ resetSignal }: { resetSignal: number }) => {
                 <TouchableOpacity
                     onPress={() => setPage(p => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    style={{ marginHorizontal: 10, opacity: page === 1 ? 0.5 : 1 }}
+                    style={{
+                        marginHorizontal: 10,
+                        opacity: page === 1 ? 0.5 : 1,
+                        backgroundColor: '#007bff',
+                        borderRadius: 8,
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        shadowColor: '#007bff',
+                        shadowOpacity: 0.15,
+                        shadowRadius: 4,
+                        shadowOffset: { width: 0, height: 2 },
+                    }}
                 >
-                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang trước</Text>
+                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Trang trước</Text>
                 </TouchableOpacity>
                 <Text style={{ alignSelf: 'center', fontWeight: 'bold' }}>{page} / {totalPages}</Text>
                 <TouchableOpacity
                     onPress={() => setPage(p => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    style={{ marginHorizontal: 10, opacity: page === totalPages ? 0.5 : 1 }}
+                    style={{
+                        marginHorizontal: 10,
+                        opacity: page === totalPages ? 0.5 : 1,
+                        backgroundColor: '#007bff',
+                        borderRadius: 8,
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        shadowColor: '#007bff',
+                        shadowOpacity: 0.15,
+                        shadowRadius: 4,
+                        shadowOffset: { width: 0, height: 2 },
+                    }}
                 >
+                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Trang sau</Text>
                     <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang sau</Text>
                 </TouchableOpacity>
             </View>
