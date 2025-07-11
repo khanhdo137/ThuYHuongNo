@@ -1,10 +1,10 @@
 import apiClient from '@/api/client';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ResizeMode, Video } from 'expo-av';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Button, Card, Divider, ActivityIndicator as PaperActivityIndicator, Text as PaperText, Surface } from 'react-native-paper';
+import Swiper from 'react-native-swiper';
 
 // --- PAGE_SIZE dùng cho tất cả các content ---
 const PAGE_SIZE = 10;
@@ -77,15 +77,15 @@ const ServicesContent = ({ resetSignal }: { resetSignal: number }) => {
 
     if (!selectedCategory) {
         return (
-    <View style={styles.contentContainer}>
+            <View style={{ padding: 16 }}>
+                <PaperText variant="titleMedium" style={{ marginBottom: 12 }}>Danh mục dịch vụ</PaperText>
                 {serviceCategories.map(item => (
-                    <TouchableOpacity key={item.key} style={[styles.card, styles.serviceCard]} onPress={() => handleSelectCategory(item.key)}>
-                <Ionicons name={item.icon as any} size={30} color="#007bff" style={styles.serviceIcon} />
-                <View style={styles.cardTextContainer}>
-                            <Text style={styles.cardTitle}>{item.key}</Text>
-                    <Text style={styles.cardDescription}>{item.description}</Text>
-                </View>
-                    </TouchableOpacity>
+                    <Card key={item.key} style={{ marginBottom: 12 }} onPress={() => setSelectedCategory(item.key)}>
+                        <Card.Title title={item.key} left={props => <Ionicons name={item.icon as any} size={30} color="#007bff" />} />
+                        <Card.Content>
+                            <PaperText>{item.description}</PaperText>
+                        </Card.Content>
+                    </Card>
                 ))}
             </View>
         );
@@ -93,90 +93,48 @@ const ServicesContent = ({ resetSignal }: { resetSignal: number }) => {
 
     // Đang ở màn hình danh sách dịch vụ của 1 loại
     return (
-        <View style={styles.contentContainer}>
-            <TouchableOpacity onPress={() => setSelectedCategory(null)} style={{ marginBottom: 15 }}>
-                <Text style={{ color: '#007bff', fontWeight: 'bold' }}>{'< Quay lại danh mục dịch vụ'}</Text>
-            </TouchableOpacity>
-            <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Dịch vụ: {selectedCategory}</Text>
+        <View style={{ padding: 16 }}>
+            <Button mode="outlined" onPress={() => setSelectedCategory(null)} style={{ marginBottom: 10 }}>
+                {"< Quay lại danh mục dịch vụ"}
+            </Button>
+            <PaperText variant="titleMedium" style={{ marginBottom: 10 }}>Dịch vụ: {selectedCategory}</PaperText>
             {loading && (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginVertical: 30 }}>
-    <ActivityIndicator size="large" color="#007bff" />
-    <Text style={{ marginTop: 10, color: '#007bff' }}>Đang tải dữ liệu...</Text>
-  </View>
-)}
-            {!loading && services.length === 0 && <Text>Không có dịch vụ nào.</Text>}
+                <View style={{ alignItems: 'center', marginVertical: 30 }}>
+                    <PaperActivityIndicator animating size="large" color="#007bff" />
+                    <PaperText style={{ marginTop: 10, color: '#007bff' }}>Đang tải dữ liệu...</PaperText>
+                </View>
+            )}
+            {!loading && services.length === 0 && <PaperText>Không có dịch vụ nào.</PaperText>}
             {services.map(s => {
-                    const mediaLinks = extractMediaLinks(s.description || '');
-                    const firstMedia = mediaLinks[0];
-                    return (
-                        <TouchableOpacity
-                            key={s.serviceId}
-                            style={[styles.card, { flexDirection: 'column', alignItems: 'flex-start', padding: 15, marginBottom: 10 }]}
-                            onPress={() => (navigation as any).navigate('ServiceDetail', { service: s })}
-                        >
-                            {firstMedia && isImage(firstMedia) && (
-                                <Image source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} resizeMode="cover" />
-                            )}
-                            {firstMedia && isMp4(firstMedia) && (
-                                <Video source={{ uri: firstMedia }} style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
-                            )}
-                            {firstMedia && isYouTube(firstMedia) && (
-                                <WebView
-                                    source={{ uri: getYouTubeEmbedUrl(firstMedia) }}
-                                    style={{ width: '100%', height: 120, borderRadius: 8, marginBottom: 8 }}
-                                />
-                            )}
-                            <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{s.name}</Text>
-                            <Text style={{ color: '#666', marginTop: 2 }} numberOfLines={2} ellipsizeMode="tail">{s.description}</Text>
+                const mediaLinks = extractMediaLinks(s.description || '');
+                const firstMedia = mediaLinks[0];
+                return (
+                    <Card key={s.serviceId} style={{ marginBottom: 12 }} onPress={() => (navigation as any).navigate('ServiceDetail', { service: s })}>
+                        {firstMedia && isImage(firstMedia) && (
+                            <Card.Cover source={{ uri: firstMedia }} style={{ height: 140 }} />
+                        )}
+                        <Card.Content>
+                            <PaperText variant="titleMedium">{s.name}</PaperText>
+                            <PaperText style={{ color: '#666', marginTop: 2 }} numberOfLines={2}>{s.description}</PaperText>
                             <View style={{ flexDirection: 'row', marginTop: 6 }}>
-                                <Text style={{ color: '#007bff', fontWeight: '600', marginRight: 15 }}>Giá: {s.priceText || 'Liên hệ'}</Text>
-                                <Text style={{ color: '#28a745', fontWeight: '600' }}>Thời lượng: {s.durationText || 'Liên hệ'}</Text>
+                                <PaperText style={{ color: '#007bff', fontWeight: '600', marginRight: 15 }}>Giá: {s.priceText || 'Liên hệ'}</PaperText>
+                                <PaperText style={{ color: '#28a745', fontWeight: '600' }}>Thời lượng: {s.durationText || 'Liên hệ'}</PaperText>
                             </View>
-                        </TouchableOpacity>
-                    );
+                        </Card.Content>
+                    </Card>
+                );
             })}
             <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
-                <TouchableOpacity
-                    onPress={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    style={{
-                        marginHorizontal: 10,
-                        opacity: page === 1 ? 0.5 : 1,
-                        backgroundColor: '#007bff',
-                        borderRadius: 8,
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                        shadowColor: '#007bff',
-                        shadowOpacity: 0.15,
-                        shadowRadius: 4,
-                        shadowOffset: { width: 0, height: 2 },
-                    }}
-                >
-                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Trang trước</Text>
-                </TouchableOpacity>
-                <Text style={{ alignSelf: 'center', fontWeight: 'bold' }}>{page} / {totalPages}</Text>
-                <TouchableOpacity
-                    onPress={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    style={{
-                        marginHorizontal: 10,
-                        opacity: page === totalPages ? 0.5 : 1,
-                        backgroundColor: '#007bff',
-                        borderRadius: 8,
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                        shadowColor: '#007bff',
-                        shadowOpacity: 0.15,
-                        shadowRadius: 4,
-                        shadowOffset: { width: 0, height: 2 },
-                    }}
-                >
-                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Trang sau</Text>
-                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang sau</Text>
-                </TouchableOpacity>
+                <Button mode="contained-tonal" onPress={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ marginHorizontal: 10 }}>
+                    Trang trước
+                </Button>
+                <PaperText style={{ alignSelf: 'center', fontWeight: 'bold', marginHorizontal: 10 }}>{page} / {totalPages}</PaperText>
+                <Button mode="contained-tonal" onPress={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ marginHorizontal: 10 }}>
+                    Trang sau
+                </Button>
             </View>
-    </View>
-);
+        </View>
+    );
 };
 
 
@@ -210,40 +168,28 @@ const NewsContent = ({ resetSignal }: { resetSignal: number }) => {
     }, [page]);
 
     return (
-        <View style={styles.contentContainer}>
-            {loading && <Text>Đang tải...</Text>}
-            {!loading && news.length === 0 && <Text>Không có tin tức sự kiện.</Text>}
+        <View style={{ padding: 16 }}>
+            {loading && <PaperText>Đang tải...</PaperText>}
+            {!loading && news.length === 0 && <PaperText>Không có tin tức sự kiện.</PaperText>}
             {news.map(item => (
-                <TouchableOpacity
-                    key={item.newsId}
-                    style={[styles.card, styles.newsCard]}
-                    onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}
-                >
+                <Card key={item.newsId} style={{ marginBottom: 12 }} onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}>
                     {item.imageUrl && (
                         <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
                     )}
-                    <View style={styles.newsTextContainer}>
-                        <Text style={styles.cardTitle}>{item.title}</Text>
-                        <Text style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</Text>
-                    </View>
-                </TouchableOpacity>
+                    <Card.Content>
+                        <PaperText variant="titleMedium">{item.title}</PaperText>
+                        <PaperText style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</PaperText>
+                    </Card.Content>
+                </Card>
             ))}
             <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
-                <TouchableOpacity
-                    onPress={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    style={{ marginHorizontal: 10, opacity: page === 1 ? 0.5 : 1 }}
-                >
-                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang trước</Text>
-                </TouchableOpacity>
-                <Text style={{ alignSelf: 'center', fontWeight: 'bold' }}>{page} / {totalPages}</Text>
-                <TouchableOpacity
-                    onPress={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    style={{ marginHorizontal: 10, opacity: page === totalPages ? 0.5 : 1 }}
-                >
-                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang sau</Text>
-                </TouchableOpacity>
+                <Button mode="contained-tonal" onPress={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ marginHorizontal: 10 }}>
+                    Trang trước
+                </Button>
+                <PaperText style={{ alignSelf: 'center', fontWeight: 'bold', marginHorizontal: 10 }}>{page} / {totalPages}</PaperText>
+                <Button mode="contained-tonal" onPress={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ marginHorizontal: 10 }}>
+                    Trang sau
+                </Button>
             </View>
         </View>
     );
@@ -279,40 +225,28 @@ const KnowledgeContent = ({ resetSignal }: { resetSignal: number }) => {
     }, [page]);
 
     return (
-        <View style={styles.contentContainer}>
-            {loading && <Text>Đang tải...</Text>}
-            {!loading && news.length === 0 && <Text>Không có bài kiến thức.</Text>}
+        <View style={{ padding: 16 }}>
+            {loading && <PaperText>Đang tải...</PaperText>}
+            {!loading && news.length === 0 && <PaperText>Không có bài kiến thức.</PaperText>}
             {news.map(item => (
-                <TouchableOpacity
-                    key={item.newsId}
-                    style={[styles.card, styles.newsCard]}
-                    onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}
-                >
+                <Card key={item.newsId} style={{ marginBottom: 12 }} onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}>
                     {item.imageUrl && (
                         <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
                     )}
-                    <View style={styles.newsTextContainer}>
-                        <Text style={styles.cardTitle}>{item.title}</Text>
-                        <Text style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</Text>
-                    </View>
-                </TouchableOpacity>
+                    <Card.Content>
+                        <PaperText variant="titleMedium">{item.title}</PaperText>
+                        <PaperText style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</PaperText>
+                    </Card.Content>
+                </Card>
             ))}
             <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
-                <TouchableOpacity
-                    onPress={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    style={{ marginHorizontal: 10, opacity: page === 1 ? 0.5 : 1 }}
-                >
-                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang trước</Text>
-                </TouchableOpacity>
-                <Text style={{ alignSelf: 'center', fontWeight: 'bold' }}>{page} / {totalPages}</Text>
-                <TouchableOpacity
-                    onPress={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    style={{ marginHorizontal: 10, opacity: page === totalPages ? 0.5 : 1 }}
-                >
-                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang sau</Text>
-                </TouchableOpacity>
+                <Button mode="contained-tonal" onPress={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ marginHorizontal: 10 }}>
+                    Trang trước
+                </Button>
+                <PaperText style={{ alignSelf: 'center', fontWeight: 'bold', marginHorizontal: 10 }}>{page} / {totalPages}</PaperText>
+                <Button mode="contained-tonal" onPress={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ marginHorizontal: 10 }}>
+                    Trang sau
+                </Button>
             </View>
         </View>
     );
@@ -348,40 +282,28 @@ const VideoContent = ({ resetSignal }: { resetSignal: number }) => {
     }, [page]);
 
     return (
-        <View style={styles.contentContainer}>
-            {loading && <Text>Đang tải...</Text>}
-            {!loading && news.length === 0 && <Text>Không có video.</Text>}
+        <View style={{ padding: 16 }}>
+            {loading && <PaperText>Đang tải...</PaperText>}
+            {!loading && news.length === 0 && <PaperText>Không có video.</PaperText>}
             {news.map(item => (
-                <TouchableOpacity
-                    key={item.newsId}
-                    style={[styles.card, styles.newsCard]}
-                    onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}
-                >
+                <Card key={item.newsId} style={{ marginBottom: 12 }} onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}>
                     {item.imageUrl && (
                         <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
                     )}
-                    <View style={styles.newsTextContainer}>
-                        <Text style={styles.cardTitle}>{item.title}</Text>
-                        <Text style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</Text>
-                    </View>
-                </TouchableOpacity>
+                    <Card.Content>
+                        <PaperText variant="titleMedium">{item.title}</PaperText>
+                        <PaperText style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</PaperText>
+                    </Card.Content>
+                </Card>
             ))}
             <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
-                <TouchableOpacity
-                    onPress={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    style={{ marginHorizontal: 10, opacity: page === 1 ? 0.5 : 1 }}
-                >
-                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang trước</Text>
-                </TouchableOpacity>
-                <Text style={{ alignSelf: 'center', fontWeight: 'bold' }}>{page} / {totalPages}</Text>
-                <TouchableOpacity
-                    onPress={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    style={{ marginHorizontal: 10, opacity: page === totalPages ? 0.5 : 1 }}
-                >
-                    <Text style={{ color: '#007bff', fontWeight: 'bold' }}>Trang sau</Text>
-                </TouchableOpacity>
+                <Button mode="contained-tonal" onPress={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ marginHorizontal: 10 }}>
+                    Trang trước
+                </Button>
+                <PaperText style={{ alignSelf: 'center', fontWeight: 'bold', marginHorizontal: 10 }}>{page} / {totalPages}</PaperText>
+                <Button mode="contained-tonal" onPress={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ marginHorizontal: 10 }}>
+                    Trang sau
+                </Button>
             </View>
         </View>
     );
@@ -389,19 +311,28 @@ const VideoContent = ({ resetSignal }: { resetSignal: number }) => {
 
 const TABS = ['Dịch vụ', 'Tin tức-sự kiện', 'Kiến Thức', 'Video'];
 
+// Mock banner images
+const BANNER_IMAGES = [
+    require('../../assets/images/Banner1.png'),
+    require('../../assets/images/Banner2.png'),
+    require('../../assets/images/Banner3.png'),
+    require('../../assets/images/Banner4.png'),
+    require('../../assets/images/Banner5.png'),
+  ];
+
 export default function HomeScreen() {
-    const [activeTab, setActiveTab] = useState(TABS[0]);
+    const [activeTab, setActiveTab] = useState(0);
     const [resetSignal, setResetSignal] = useState(0);
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'Dịch vụ':
+            case 0:
                 return <ServicesContent resetSignal={resetSignal} />;
-            case 'Tin tức-sự kiện':
+            case 1:
                 return <NewsContent resetSignal={resetSignal} />;
-            case 'Kiến Thức':
+            case 2:
                 return <KnowledgeContent resetSignal={resetSignal} />;
-            case 'Video':
+            case 3:
                 return <VideoContent resetSignal={resetSignal} />;
             default:
                 return null;
@@ -409,29 +340,42 @@ export default function HomeScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <View style={styles.container}>
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Trang chủ</Text>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+            <Surface style={{ flex: 1 }}>
+                {/* Banner Swiper */}
+                <View style={{ height: 180 }}>
+                    <Swiper autoplay showsPagination dotColor="#eee" activeDotColor="#007bff">
+                        {BANNER_IMAGES.map((img, idx) => (
+                            <Image
+                                key={idx}
+                                source={img}
+                                style={{ width: '100%', height: 180, resizeMode: 'cover', borderRadius: 0 }}
+                            />
+                        ))}
+                    </Swiper>
                 </View>
-                <View style={styles.tabBar}>
-                    {TABS.map((tab) => (
-                        <TouchableOpacity
+                <View style={{ flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4 }}>
+                    {TABS.map((tab, idx) => (
+                        <Button
                             key={tab}
-                            style={[styles.tabItem, activeTab === tab && styles.activeTabItem]}
+                            mode={activeTab === idx ? 'contained' : 'text'}
                             onPress={() => {
-                                setActiveTab(tab);
+                                setActiveTab(idx);
                                 setResetSignal(s => s + 1);
                             }}
+                            style={{ flex: 1, marginHorizontal: 4, borderRadius: 20 }}
+                            labelStyle={{ color: activeTab === idx ? 'white' : '#007bff', fontWeight: 'bold' }}
+                            contentStyle={{ height: 40 }}
                         >
-                            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
-                        </TouchableOpacity>
+                            {tab}
+                        </Button>
                     ))}
                 </View>
-                <ScrollView>
+                <Divider />
+                <ScrollView style={{ flex: 1 }}>
                     {renderContent()}
                 </ScrollView>
-            </View>
+            </Surface>
         </SafeAreaView>
     );
 }

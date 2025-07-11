@@ -67,48 +67,49 @@ export default function ServiceDetailScreen() {
     const descriptionParts = splitDescriptionWithMedia(service.description || '');
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
-            <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 0 }}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ position: 'absolute', top: 10, left: 10, zIndex: 2 }}>
-                    <Ionicons name="arrow-back" size={28} color="#007bff" />
-                </TouchableOpacity>
-                <View style={{ minHeight: 40 }} />
-                <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 10 }}>{service.name}</Text>
-                <Text style={{ color: '#007bff', fontWeight: '600', fontSize: 16, marginBottom: 5 }}>Giá: {service.priceText || 'Liên hệ'}</Text>
-                <Text style={{ color: '#28a745', fontWeight: '600', fontSize: 16, marginBottom: 5 }}>Thời lượng: {service.durationText || 'Liên hệ'}</Text>
-                {service.category && <Text style={{ color: '#888', fontSize: 15, marginBottom: 10 }}>Loại: {service.category}</Text>}
-                {/* Render mô tả và media đúng thứ tự */}
-                {descriptionParts.map((part, idx) => {
-                    if (isImage(part)) {
-                        return <Image key={idx} source={{ uri: part }} style={{ width: width - 40, height: 200, borderRadius: 10, marginBottom: 15 }} resizeMode="cover" />;
-                    } else if (isMp4(part)) {
-                        return <Video key={idx} source={{ uri: part }} style={{ width: width - 40, height: 220, borderRadius: 10, marginBottom: 15 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />;
-                    } else if (isYouTube(part)) {
-                        let videoId = '';
-                        const ytMatch = part.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w\-]+)/);
-                        if (ytMatch) videoId = ytMatch[1];
-                        const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : part;
-                        return <WebView key={idx} source={{ uri: embedUrl }} style={{ width: width - 40, height: 220, borderRadius: 10, marginBottom: 15 }} />;
-                    } else {
-                        // Là text
-                        return <Text key={idx} style={{ fontSize: 16, color: '#333', marginTop: 10, marginBottom: 16 }}>{part.trim()}</Text>;
-                    }
-                })}
-                {/* Nút đặt lịch */}
-                <TouchableOpacity
-                    style={{ backgroundColor: '#007bff', padding: 16, borderRadius: 10, alignItems: 'center', marginTop: 30, marginBottom: 20 }}
-                    onPress={async () => {
-                        const token = await AsyncStorage.getItem('token');
-                        if (token) setShowBookingModal(true);
-                        else {
-                            Alert.alert('Thông báo', 'Bạn cần đăng nhập để đặt lịch', [
-                                { text: 'Đăng nhập', onPress: () => (navigation as any).navigate('Login') },
-                                { text: 'Hủy', style: 'cancel' }
-                            ]);
+            <ScrollView contentContainerStyle={{ padding: 0 }}>
+                <View style={{ backgroundColor: 'white', borderBottomLeftRadius: 24, borderBottomRightRadius: 24, padding: 0, shadowColor: '#007bff', shadowOpacity: 0.10, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={{ position: 'absolute', top: 18, left: 18, zIndex: 2 }}>
+                        <Ionicons name="arrow-back" size={30} color="#007bff" />
+                    </TouchableOpacity>
+                    <View style={{ minHeight: 60 }} />
+                    <Text style={{ fontSize: 26, fontWeight: 'bold', marginBottom: 10, color: '#007bff', textAlign: 'center', marginTop: 18 }}>{service.name}</Text>
+                    <Text style={{ color: '#007bff', fontWeight: '600', fontSize: 17, marginBottom: 5, textAlign: 'center' }}>Giá: {service.priceText || 'Liên hệ'}</Text>
+                    <Text style={{ color: '#28a745', fontWeight: '600', fontSize: 16, marginBottom: 5, textAlign: 'center' }}>Thời lượng: {service.durationText || 'Liên hệ'}</Text>
+                    {service.category && <Text style={{ color: '#888', fontSize: 15, marginBottom: 10, textAlign: 'center' }}>Loại: {service.category}</Text>}
+                </View>
+                <View style={{ padding: 20 }}>
+                    {descriptionParts.map((part, idx) => {
+                        if (isImage(part)) {
+                            return <Image key={idx} source={{ uri: part }} style={{ width: width - 40, height: 200, borderRadius: 16, marginBottom: 18, alignSelf: 'center', shadowColor: '#007bff', shadowOpacity: 0.10, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 }} resizeMode="cover" />;
+                        } else if (isMp4(part)) {
+                            return <Video key={idx} source={{ uri: part }} style={{ width: width - 40, height: 220, borderRadius: 16, marginBottom: 18, alignSelf: 'center', shadowColor: '#007bff', shadowOpacity: 0.10, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />;
+                        } else if (isYouTube(part)) {
+                            let videoId = '';
+                            const ytMatch = part.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w\-]+)/);
+                            if (ytMatch) videoId = ytMatch[1];
+                            const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : part;
+                            return <WebView key={idx} source={{ uri: embedUrl }} style={{ width: width - 40, height: 220, borderRadius: 16, marginBottom: 18, alignSelf: 'center', overflow: 'hidden' }} />;
+                        } else {
+                            return <Text key={idx} style={{ fontSize: 17, color: '#333', marginTop: 10, marginBottom: 18, textAlign: 'justify', lineHeight: 24 }}>{part.trim()}</Text>;
                         }
-                    }}
-                >
-                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>Đặt lịch</Text>
-                </TouchableOpacity>
+                    })}
+                    <TouchableOpacity
+                        style={{ backgroundColor: '#007bff', padding: 18, borderRadius: 14, alignItems: 'center', marginTop: 30, marginBottom: 20, shadowColor: '#007bff', shadowOpacity: 0.13, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}
+                        onPress={async () => {
+                            const token = await AsyncStorage.getItem('token');
+                            if (token) setShowBookingModal(true);
+                            else {
+                                Alert.alert('Thông báo', 'Bạn cần đăng nhập để đặt lịch', [
+                                    { text: 'Đăng nhập', onPress: () => (navigation as any).navigate('Login') },
+                                    { text: 'Hủy', style: 'cancel' }
+                                ]);
+                            }
+                        }}
+                    >
+                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 19, letterSpacing: 0.5 }}>Đặt lịch</Text>
+                    </TouchableOpacity>
+                </View>
                 <BookingModal
                     visible={showBookingModal}
                     onClose={() => setShowBookingModal(false)}
@@ -183,8 +184,8 @@ function BookingModal({ visible, onClose, service }: { visible: boolean, onClose
     return (
         <Modal visible={visible} animationType="slide" transparent>
             <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
-                <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 20, width: '90%' }}>
-                    <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>Đặt lịch cho dịch vụ: {service.name}</Text>
+                <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, width: '92%', shadowColor: '#007bff', shadowOpacity: 0.10, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 5 }}>
+                    <Text style={{ fontSize: 21, fontWeight: 'bold', marginBottom: 14, color: '#007bff' }}>Đặt lịch cho dịch vụ: {service.name}</Text>
                     {loading ? <ActivityIndicator /> : (
                         <>
                             <Text style={{ fontWeight: '500', marginTop: 10 }}>Chọn thú cưng *</Text>
@@ -250,13 +251,13 @@ function BookingModal({ visible, onClose, service }: { visible: boolean, onClose
                             <TextInput style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginBottom: 8 }} placeholder="Ghi chú thêm..." value={form.notes} onChangeText={val => setForm(f => ({ ...f, notes: val }))} />
                             {error && <Text style={{ color: 'red', marginBottom: 8 }}>{error}</Text>}
                             {success && <Text style={{ color: 'green', marginBottom: 8 }}>{success}</Text>}
-                            <TouchableOpacity style={{ backgroundColor: '#007bff', padding: 12, borderRadius: 8, alignItems: 'center', marginTop: 10 }} onPress={handleSubmit} disabled={submitting}>
-                                <Text style={{ color: 'white', fontWeight: 'bold' }}>{submitting ? 'Đang gửi...' : 'Đặt lịch'}</Text>
+                            <TouchableOpacity style={{ backgroundColor: '#007bff', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 12, shadowColor: '#007bff', shadowOpacity: 0.13, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 3 }} onPress={handleSubmit} disabled={submitting}>
+                                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>{submitting ? 'Đang gửi...' : 'Đặt lịch'}</Text>
                             </TouchableOpacity>
                         </>
                     )}
-                    <TouchableOpacity style={{ alignItems: 'center', marginTop: 15 }} onPress={onClose}>
-                        <Text style={{ color: '#007bff' }}>Đóng</Text>
+                    <TouchableOpacity style={{ alignItems: 'center', marginTop: 18 }} onPress={onClose}>
+                        <Text style={{ color: '#007bff', fontSize: 16 }}>Đóng</Text>
                     </TouchableOpacity>
                 </View>
             </View>

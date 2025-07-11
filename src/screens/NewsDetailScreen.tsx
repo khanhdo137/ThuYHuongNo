@@ -45,36 +45,40 @@ export default function NewsDetailScreen() {
   const contentParts = splitContentWithMedia(news.content || '');
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#fff', padding: 16 }}>
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={28} color="#007bff" />
-      </TouchableOpacity>
-      {news.imageUrl && (
-        <Image source={{ uri: news.imageUrl }} style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: 16 }} resizeMode="cover" />
-      )}
-      <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 8 }}>{news.title}</Text>
-      <Text style={{ color: '#888', marginBottom: 12 }}>{news.createdAt ? new Date(news.createdAt).toLocaleString() : ''}</Text>
-      {/* Render content và media đúng thứ tự */}
-      {contentParts.map((part, idx) => {
-        if (isImage(part)) {
-          return <Image key={idx} source={{ uri: part }} style={{ width: width - 32, height: 200, borderRadius: 10, marginBottom: 15 }} resizeMode="cover" />;
-        } else if (isMp4(part)) {
-          return <Video key={idx} source={{ uri: part }} style={{ width: width - 32, height: 220, borderRadius: 10, marginBottom: 15 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />;
-        } else if (isYouTube(part)) {
-          let videoId = '';
-          const ytMatch = part.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w\-]+)/);
-          if (ytMatch) videoId = ytMatch[1];
-          const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : part;
-          return <WebView key={idx} source={{ uri: embedUrl }} style={{ width: width - 32, height: 220, borderRadius: 10, marginBottom: 15 }} />;
-        } else {
-          return <Text key={idx} style={{ fontSize: 16, color: '#333', marginTop: 10, marginBottom: 16 }}>{part.trim()}</Text>;
-        }
-      })}
-      {(news.tagList || news.tags) && (news.tagList?.length > 0 || news.tags) && (
-        <Text style={{ color: '#007bff', marginTop: 10 }}>
-          Tags: {news.tagList ? news.tagList.join(', ') : (news.tags || '')}
-        </Text>
-      )}
+    <ScrollView style={{ flex: 1, backgroundColor: '#f5f5f5', padding: 0 }}>
+        <View style={{ backgroundColor: 'white', borderBottomLeftRadius: 24, borderBottomRightRadius: 24, padding: 0, shadowColor: '#007bff', shadowOpacity: 0.10, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={{ position: 'absolute', top: 18, left: 18, zIndex: 2 }}>
+                <Ionicons name="arrow-back" size={30} color="#007bff" />
+            </TouchableOpacity>
+            <View style={{ minHeight: 60 }} />
+            <Text style={{ fontSize: 26, fontWeight: 'bold', marginBottom: 10, color: '#007bff', textAlign: 'center', marginTop: 18 }}>{news.title}</Text>
+            <Text style={{ color: '#888', marginBottom: 12, textAlign: 'center', fontSize: 15 }}>{news.createdAt ? new Date(news.createdAt).toLocaleString() : ''}</Text>
+        </View>
+        <View style={{ padding: 20 }}>
+            {news.imageUrl && (
+                <Image source={{ uri: news.imageUrl }} style={{ width: '100%', height: 200, borderRadius: 16, marginBottom: 18, alignSelf: 'center', shadowColor: '#007bff', shadowOpacity: 0.10, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }} resizeMode="cover" />
+            )}
+            {contentParts.map((part, idx) => {
+                if (isImage(part)) {
+                    return <Image key={idx} source={{ uri: part }} style={{ width: width - 40, height: 200, borderRadius: 16, marginBottom: 18, alignSelf: 'center', shadowColor: '#007bff', shadowOpacity: 0.10, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }} resizeMode="cover" />;
+                } else if (isMp4(part)) {
+                    return <Video key={idx} source={{ uri: part }} style={{ width: width - 40, height: 220, borderRadius: 16, marginBottom: 18, alignSelf: 'center', shadowColor: '#007bff', shadowOpacity: 0.10, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }} useNativeControls resizeMode={ResizeMode.CONTAIN} />;
+                } else if (isYouTube(part)) {
+                    let videoId = '';
+                    const ytMatch = part.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([\w\-]+)/);
+                    if (ytMatch) videoId = ytMatch[1];
+                    const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : part;
+                    return <WebView key={idx} source={{ uri: embedUrl }} style={{ width: width - 40, height: 220, borderRadius: 16, marginBottom: 18, alignSelf: 'center', overflow: 'hidden' }} />;
+                } else {
+                    return <Text key={idx} style={{ fontSize: 17, color: '#333', marginTop: 10, marginBottom: 18, textAlign: 'justify', lineHeight: 24 }}>{part.trim()}</Text>;
+                }
+            })}
+            {(news.tagList || news.tags) && (news.tagList?.length > 0 || news.tags) && (
+                <Text style={{ color: '#007bff', marginTop: 16, fontSize: 15, textAlign: 'center', fontWeight: '600' }}>
+                    Tags: {news.tagList ? news.tagList.join(', ') : (news.tags || '')}
+                </Text>
+            )}
+        </View>
     </ScrollView>
   );
 } 

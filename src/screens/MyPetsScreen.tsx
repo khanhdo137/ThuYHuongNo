@@ -18,6 +18,7 @@ interface Pet {
     age?: number;
     customerName: string;
     gender?: string;
+    vaccinatedVaccines?: string; // Thêm trường này
 }
 
 // Interface cho tạo thú cưng mới
@@ -28,6 +29,7 @@ interface CreatePetData {
     birthDate?: string;
     imageUrl?: string;
     gender?: string;
+    vaccinatedVaccines?: string; // Thêm trường này
 }
 
 export default function MyPetsScreen() {
@@ -160,6 +162,7 @@ export default function MyPetsScreen() {
                 birthDateString: newPet.birthDate || null,
                 imageUrl: imageUrl || null,
                 gender: newPet.gender || null,
+                vaccinatedVaccines: newPet.vaccinatedVaccines || null
             };
 
             await apiClient.post('/Pet', petData);
@@ -303,6 +306,14 @@ export default function MyPetsScreen() {
                             </TouchableOpacity>
                         </View>
 
+                        {/* Thêm input cho vắc xin đã tiêm khi tạo mới pet */}
+                        <TextInput
+                            style={styles.input}
+                            value={newPet.vaccinatedVaccines || ''}
+                            onChangeText={text => setNewPet({ ...newPet, vaccinatedVaccines: text })}
+                            placeholder="Vắc xin đã tiêm (tùy chọn)"
+                        />
+
                         <View style={styles.imageSection}>
                             <Text style={styles.imageSectionTitle}>Hoặc chọn ảnh từ thiết bị:</Text>
                             <TouchableOpacity 
@@ -389,6 +400,11 @@ export default function MyPetsScreen() {
                                 {selectedPet.gender && <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 5 }}>Giới tính: {selectedPet.gender}</Text>}
                                 {selectedPet.birthDate && <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 5 }}>Ngày sinh: {selectedPet.birthDate}</Text>}
                                 {selectedPet.age && <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 5 }}>Tuổi: {selectedPet.age}</Text>}
+                                {selectedPet.vaccinatedVaccines && (
+                                    <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 5 }}>
+                                        Vắc xin đã tiêm trước khi đến phòng khám: {selectedPet.vaccinatedVaccines}
+                                    </Text>
+                                )}
                                 <Text style={{ fontSize: 15, textAlign: 'center', color: '#888', marginTop: 10 }}>Chủ nuôi: {selectedPet.customerName}</Text>
                                 <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 20 }}>
                                     <TouchableOpacity style={[styles.addButton, { marginRight: 10 }]} onPress={() => { setEditMode(true); setEditPet({ name: selectedPet.name, species: selectedPet.species, breed: selectedPet.breed, birthDate: selectedPet.birthDate, imageUrl: selectedPet.imageUrl, gender: selectedPet.gender }); setEditingImageUri(null); }}>
@@ -509,6 +525,13 @@ export default function MyPetsScreen() {
                                         <Text style={{ marginLeft: 5 }}>Cái</Text>
                                     </TouchableOpacity>
                                 </View>
+                                {/* Thêm input cho vắc xin đã tiêm khi chỉnh sửa pet */}
+                                <TextInput
+                                    style={styles.input}
+                                    value={editPet.vaccinatedVaccines || ''}
+                                    onChangeText={v => setEditPet({ ...editPet, vaccinatedVaccines: v })}
+                                    placeholder="Vắc xin đã tiêm (tùy chọn)"
+                                />
                                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
                                     <TouchableOpacity style={[styles.cancelButton, { marginRight: 10 }]} onPress={() => setEditMode(false)} disabled={editingUploading}>
                                         <Text style={styles.cancelButtonText}>Hủy</Text>
@@ -532,6 +555,7 @@ export default function MyPetsScreen() {
                                                 birthDateString: editPet.birthDate || null,
                                                 imageUrl: imageUrl || null,
                                                 gender: editPet.gender || null,
+                                                vaccinatedVaccines: editPet.vaccinatedVaccines || null
                                             });
                                             await fetchPets();
                                             setEditMode(false);

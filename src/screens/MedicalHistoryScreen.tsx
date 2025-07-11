@@ -3,7 +3,16 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-function formatDate(dateStr) {
+// Định nghĩa interface cho medical history
+interface MedicalHistory {
+  historyId: number;
+  recordDate: string;
+  description?: string;
+  treatment?: string;
+  notes?: string;
+}
+
+function formatDate(dateStr: string): string {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
@@ -18,7 +27,7 @@ export default function MedicalHistoryScreen() {
   // @ts-ignore
   const { pet } = route.params || {};
   const [loading, setLoading] = useState(true);
-  const [records, setRecords] = useState([]);
+  const [records, setRecords] = useState<MedicalHistory[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -53,7 +62,7 @@ export default function MedicalHistoryScreen() {
         <FlatList
           data={records}
           keyExtractor={item => item.historyId?.toString() || Math.random().toString()}
-          renderItem={({ item }) => (
+          renderItem={({ item }: { item: MedicalHistory }) => (
             <View style={styles.card}>
               <Text style={styles.title}>Ngày khám: {formatDate(item.recordDate)}</Text>
               <Text style={styles.label}>Chẩn đoán:</Text>
@@ -96,53 +105,67 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   header: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
-    margin: 15,
-    marginBottom: 5,
+    margin: 18,
+    marginBottom: 8,
     textAlign: 'center',
-  },
+    color: '#007bff',
+    letterSpacing: 1,
+},
   card: {
-    backgroundColor: '#f8f8f8',
-    margin: 10,
-    borderRadius: 8,
-    padding: 15,
-    elevation: 2,
-  },
+    backgroundColor: '#fff',
+    margin: 12,
+    borderRadius: 14,
+    padding: 18,
+    elevation: 4,
+    shadowColor: '#007bff',
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+},
   title: {
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 17,
     marginBottom: 8,
-  },
+    color: '#007bff',
+},
   label: {
     fontWeight: '600',
-    marginTop: 6,
+    marginTop: 8,
     color: '#007bff',
-  },
+},
   value: {
     color: '#333',
     marginLeft: 4,
-  },
+    fontSize: 15,
+},
   paginationContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 15,
+    paddingVertical: 18,
     backgroundColor: '#fff',
-  },
+},
   pageBtn: {
-    marginHorizontal: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    marginHorizontal: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     backgroundColor: '#007bff',
-    borderRadius: 8,
-  },
+    borderRadius: 10,
+    shadowColor: '#007bff',
+    shadowOpacity: 0.10,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+},
   pageBtnText: {
     color: 'white',
     fontWeight: 'bold',
-  },
+    fontSize: 15,
+},
   pageNumber: {
     fontWeight: 'bold',
-    fontSize: 16,
-  },
+    fontSize: 17,
+    marginHorizontal: 8,
+},
 }); 

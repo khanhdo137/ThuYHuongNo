@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { Alert, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Card } from 'react-native-paper';
 
 interface ContactInfo {
     icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -51,19 +52,21 @@ const handlePress = async (type: 'map' | 'email' | 'tel', value: string) => {
 };
 
 const ContactInfoRow = ({ item }: { item: ContactInfo }) => (
-    <View style={styles.infoRow}>
-        <View style={styles.iconContainer}>
-            <Ionicons name={item.icon} size={28} color="#007bff" />
+    <Card style={styles.card} elevation={3}>
+        <View style={styles.infoRowNew}>
+            <View style={styles.iconContainerNew}>
+                <Ionicons name={item.icon} size={32} color="#007bff" />
+            </View>
+            <View style={styles.textContainerNew}>
+                <Text style={styles.titleNew}>{item.title}</Text>
+                {item.details.map((detail, index) => (
+                    <TouchableOpacity key={index} onPress={() => handlePress(item.type, detail)}>
+                        <Text style={styles.detailTextNew}>{detail}</Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
         </View>
-        <View style={styles.textContainer}>
-            <Text style={styles.title}>{item.title}</Text>
-            {item.details.map((detail, index) => (
-                <TouchableOpacity key={index} onPress={() => handlePress(item.type, detail)}>
-                    <Text style={styles.detailText}>{detail}</Text>
-                </TouchableOpacity>
-            ))}
-        </View>
-    </View>
+    </Card>
 );
 
 export default function ContactScreen() {
@@ -72,36 +75,37 @@ export default function ContactScreen() {
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView style={styles.container}>
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Thông tin liên hệ</Text>
+                <View style={styles.headerNew}>
+                    <Ionicons name="call" size={44} color="#007bff" style={{ marginBottom: 8 }} />
+                    <Text style={styles.headerTitleNew}>Thông tin liên hệ</Text>
+                    <Text style={styles.headerSubtitleNew}>Liên hệ với chúng tôi để được hỗ trợ nhanh chóng!</Text>
                 </View>
-                <View style={styles.content}>
+                <View style={styles.contentNew}>
                     {contactData.map((item, index) => (
                         <ContactInfoRow key={index} item={item} />
                     ))}
-                     {/* New Chat Links Section */}
-                    <View style={styles.chatSection}>
-                        <Text style={styles.chatSectionTitle}>Hỗ trợ trực tuyến</Text>
+                    <View style={styles.chatSectionNew}>
+                        <Text style={styles.chatSectionTitleNew}>Hỗ trợ trực tuyến</Text>
                         <TouchableOpacity
-                            style={[styles.chatButton, styles.messengerButton]}
+                            style={[styles.chatButtonNew, styles.messengerButtonNew]}
                             onPress={() => Linking.openURL('https://m.me/thuybinhduonghuongno')}
                         >
-                            <Ionicons name="chatbubbles-outline" size={24} color="white" />
-                            <Text style={styles.chatButtonText}>Liên hệ qua Messenger</Text>
+                            <Ionicons name="chatbubbles-outline" size={26} color="white" />
+                            <Text style={styles.chatButtonTextNew}>Liên hệ qua Messenger</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.chatButton, styles.zaloButton]}
+                            style={[styles.chatButtonNew, styles.zaloButtonNew]}
                             onPress={() => Linking.openURL('https://zalo.me/0973560989')}
                         >
-                            <Ionicons name="chatbubble-ellipses-outline" size={24} color="white" />
-                            <Text style={styles.chatButtonText}>Liên hệ qua Zalo</Text>
+                            <Ionicons name="chatbubble-ellipses-outline" size={26} color="white" />
+                            <Text style={styles.chatButtonTextNew}>Liên hệ qua Zalo</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.chatButton, styles.chatbotButton]}
+                            style={[styles.chatButtonNew, styles.chatbotButtonNew]}
                             onPress={() => navigation.navigate('ChatBot' as never)}
                         >
-                            <Ionicons name="sparkles-outline" size={24} color="white" />
-                            <Text style={styles.chatButtonText}>Chatbot Tư vấn</Text>
+                            <Ionicons name="sparkles-outline" size={26} color="white" />
+                            <Text style={styles.chatButtonTextNew}>Chatbot Tư vấn</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -118,95 +122,115 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    header: {
-        paddingVertical: 20,
+    // Header
+    headerNew: {
+        paddingVertical: 32,
         alignItems: 'center',
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: '#e9ecef',
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        marginBottom: 0,
     },
-    headerTitle: {
-        fontSize: 22,
+    headerTitleNew: {
+        fontSize: 26,
         fontWeight: 'bold',
+        color: '#007bff',
+        marginBottom: 4,
     },
-    content: {
-        padding: 20,
+    headerSubtitleNew: {
+        fontSize: 15,
+        color: '#666',
+        textAlign: 'center',
+        marginTop: 2,
     },
-    infoRow: {
+    // Card
+    card: {
+        borderRadius: 18,
+        marginBottom: 18,
+        backgroundColor: 'white',
+        shadowColor: '#007bff',
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 3,
+    },
+    infoRowNew: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
-        backgroundColor: 'white',
-        padding: 15,
-        borderRadius: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        padding: 18,
     },
-    iconContainer: {
-        width: 45,
-        height: 45,
-        borderRadius: 22.5,
+    iconContainerNew: {
+        width: 54,
+        height: 54,
+        borderRadius: 27,
         backgroundColor: '#e7f3ff',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 15,
+        marginRight: 18,
     },
-    textContainer: {
+    textContainerNew: {
         flex: 1,
     },
-    title: {
-        fontSize: 17,
-        fontWeight: '600',
-        color: '#343a40',
-        marginBottom: 4,
-    },
-    detailText: {
-        fontSize: 15,
+    titleNew: {
+        fontSize: 18,
+        fontWeight: '700',
         color: '#007bff',
-        lineHeight: 22,
+        marginBottom: 6,
     },
-    chatSection: {
-        marginTop: 20,
-        paddingTop: 20,
+    detailTextNew: {
+        fontSize: 16,
+        color: '#343a40',
+        lineHeight: 22,
+        marginBottom: 2,
+        textDecorationLine: 'underline',
+    },
+    // Content
+    contentNew: {
+        padding: 20,
+        paddingTop: 10,
+    },
+    // Chat Section
+    chatSectionNew: {
+        marginTop: 24,
+        paddingTop: 24,
         borderTopWidth: 1,
         borderTopColor: '#e9ecef',
     },
-    chatSectionTitle: {
-        fontSize: 18,
+    chatSectionTitleNew: {
+        fontSize: 19,
         fontWeight: 'bold',
-        color: '#343a40',
-        marginBottom: 15,
+        color: '#007bff',
+        marginBottom: 18,
         textAlign: 'center',
     },
-    chatButton: {
+    chatButtonNew: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 14,
-        borderRadius: 10,
-        marginBottom: 12,
-        shadowColor: "#000",
+        paddingVertical: 16,
+        borderRadius: 12,
+        marginBottom: 14,
+        shadowColor: '#007bff',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
+        shadowOpacity: 0.13,
+        shadowRadius: 4,
         elevation: 4,
     },
-    chatButtonText: {
+    chatButtonTextNew: {
         color: 'white',
-        fontSize: 16,
+        fontSize: 17,
         fontWeight: 'bold',
-        marginLeft: 10,
+        marginLeft: 12,
     },
-    messengerButton: {
-        backgroundColor: '#0084ff',
+    messengerButtonNew: {
+        backgroundColor: '#8e44ad', // Messenger tím
     },
-    zaloButton: {
-        backgroundColor: '#0068ff',
+    zaloButtonNew: {
+        backgroundColor: '#0068ff', // Zalo đặc trưng
     },
-    chatbotButton: {
-        backgroundColor: '#343a40',
+    chatbotButtonNew: {
+        backgroundColor: '#4f8cff', // Màu giống Gemini (xanh tím)
     },
 }); 

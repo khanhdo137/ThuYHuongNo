@@ -3,7 +3,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useEffect, useState } from 'react';
-import { Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Button, Card, Dialog, Divider, TextInput as PaperInput, Text as PaperText, Portal, RadioButton } from 'react-native-paper';
 
 // Custom component for form rows
 interface FormRowProps {
@@ -42,7 +43,7 @@ export default function BookingScreen() {
         species: '',
         weight: '',
         age: '',
-        vaccines: '',
+        vaccines: '', // vắc xin đã tiêm
         date: '21/06/2025',
         time: '07:00',
         doctor: '',
@@ -56,7 +57,7 @@ export default function BookingScreen() {
     const [doctors, setDoctors] = useState<Array<{doctorId: number, fullName: string, specialization: string, branch: string, displayText: string}>>([]);
     const [loading, setLoading] = useState(false);
     const [userInfo, setUserInfo] = useState<{customerName: string, phoneNumber: string} | null>(null);
-    const [pets, setPets] = useState<Array<{ petId: number, name: string, species: string, age?: number }>>([]);
+    const [pets, setPets] = useState<Array<{ petId: number, name: string, species: string, age?: number, vaccinatedVaccines?: string }>>([]);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -84,7 +85,13 @@ export default function BookingScreen() {
                 if (token) {
                     const response = await apiClient.get('/Pet');
                     if (response.data) {
-                        setPets(response.data.map((pet: any) => ({ petId: pet.petId, name: pet.name, species: pet.species, age: pet.age })));
+                        setPets(response.data.map((pet: any) => ({
+                            petId: pet.petId,
+                            name: pet.name,
+                            species: pet.species,
+                            age: pet.age,
+                            vaccinatedVaccines: pet.vaccinatedVaccines || ''
+                        })));
                     }
                 }
             } catch (error) {
@@ -148,6 +155,26 @@ export default function BookingScreen() {
     const doctorOptions = ['Không chọn riêng', ...doctors.map(d => d.displayText)];
     const serviceOptions = services.map(s => ({ label: s.displayText, value: s.serviceId.toString() }));
 
+    // Khi chọn pet, nếu là pet cũ thì tự động lấy vắc xin đã tiêm
+    const handlePetSelection = (val: string) => {
+        handleInputChange('petSelection', val);
+        if (val === 'Mới') {
+            handleInputChange('petName', '');
+            handleInputChange('species', '');
+            handleInputChange('age', '');
+            handleInputChange('vaccines', '');
+        } else {
+            const selectedPet = pets.find(p => p.name === val);
+            if (selectedPet) {
+                handleInputChange('petName', selectedPet.name);
+                handleInputChange('species', selectedPet.species);
+                handleInputChange('age', selectedPet.age ? selectedPet.age.toString() : '');
+                // Lấy vắc xin đã tiêm từ pet
+                handleInputChange('vaccines', selectedPet.vaccinatedVaccines || '');
+            }
+        }
+    };
+
     const handleSubmit = async () => {
         setError(null);
         setSuccess(null);
@@ -168,6 +195,7 @@ export default function BookingScreen() {
                     birthDateString: '',
                     gender: '',
                     imageUrl: '',
+                    vaccinatedVaccines: formData.vaccines // gửi lên backend
                 };
                 const petRes = await apiClient.post('/Pet', petPayload);
                 petId = petRes.data?.petId;
@@ -223,86 +251,122 @@ export default function BookingScreen() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.container}>
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Đặt lịch hẹn</Text>
-                    <Text style={styles.headerSubtitle}>Vui lòng điền thông tin bên dưới để đặt lịch hẹn cho thú cưng của bạn.</Text>
-                </View>
-
-                <View style={styles.formContainer}>
-                    <FormRow label="Số điện thoại">
-                        <TextInput style={styles.input} value={formData.phone} onChangeText={val => handleInputChange('phone', val)} placeholder="Nhập số điện thoại" keyboardType="phone-pad" />
-                    </FormRow>
-                    <FormRow label="Họ và Tên">
-                        <TextInput style={styles.input} value={formData.name} onChangeText={val => handleInputChange('name', val)} placeholder="Nhập họ và tên của bạn" />
-                    </FormRow>
-                    
-                    <View style={styles.row}>
-                        <View style={styles.col}>
-                            <FormRow label="Thú cưng">
-                                <MockPicker 
-                                    label="-- Mới --" 
-                                    selectedValue={formData.petSelection} 
-                                    onPress={() => openPicker(petOptions, (val) => {
-                                        handleInputChange('petSelection', val);
-                                        if (val === 'Mới') {
-                                            handleInputChange('petName', '');
-                                            handleInputChange('species', '');
-                                            handleInputChange('age', '');
-                                        } else {
-                                            const selectedPet = pets.find(p => p.name === val);
-                                            if (selectedPet) {
-                                                handleInputChange('petName', selectedPet.name);
-                                                handleInputChange('species', selectedPet.species);
-                                                handleInputChange('age', selectedPet.age ? selectedPet.age.toString() : '');
-                                            }
-                                        }
-                                    })}
-                                />
-                            </FormRow>
-                        </View>
-                        <View style={styles.col}>
-                            <FormRow label="Tên thú">
-                                <TextInput style={styles.input} value={formData.petName} onChangeText={val => handleInputChange('petName', val)} placeholder="Tên thú cưng" />
-                            </FormRow>
-                        </View>
-                    </View>
-
-                    <FormRow label="Giống loài">
-                         <MockPicker 
-                            label="-- Giống loài --" 
-                            selectedValue={formData.species} 
-                            onPress={() => openPicker(speciesOptions, (val) => handleInputChange('species', val))}
+            <ScrollView contentContainerStyle={{ padding: 0 }}>
+                <Card style={{ margin: 16, borderRadius: 16, elevation: 3 }}>
+                    <Card.Title title="Đặt lịch hẹn" titleStyle={{ fontSize: 24, fontWeight: 'bold', color: '#007bff' }} />
+                    <Card.Content>
+                        <PaperText style={{ color: '#666', marginBottom: 18, textAlign: 'center' }}>
+                            Vui lòng điền thông tin bên dưới để đặt lịch hẹn cho thú cưng của bạn.
+                        </PaperText>
+                        <Divider style={{ marginBottom: 18 }} />
+                        <PaperInput
+                            label="Số điện thoại"
+                            value={formData.phone}
+                            onChangeText={val => handleInputChange('phone', val)}
+                            mode="outlined"
+                            keyboardType="phone-pad"
+                            style={{ marginBottom: 14 }}
                         />
-                    </FormRow>
-
-                    <View style={styles.row}>
-                        <View style={styles.col}>
-                            <FormRow label="Cân nặng (kg)">
-                                <TextInput style={styles.input} value={formData.weight} onChangeText={val => handleInputChange('weight', val)} placeholder="VD: 5.5" keyboardType="numeric" />
-                            </FormRow>
+                        <PaperInput
+                            label="Họ và Tên"
+                            value={formData.name}
+                            onChangeText={val => handleInputChange('name', val)}
+                            mode="outlined"
+                            style={{ marginBottom: 14 }}
+                        />
+                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 0 }}>
+                            <View style={{ flex: 1 }}>
+                                <PaperText style={{ marginBottom: 6, fontWeight: '600', color: '#007bff' }}>Thú cưng</PaperText>
+                                <Button
+                                    mode="outlined"
+                                    onPress={() => openPicker(petOptions, handlePetSelection)}
+                                    style={{ marginBottom: 0, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
+                                    contentStyle={{ justifyContent: 'space-between' }}
+                                    icon="paw"
+                                    labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
+                                    theme={{ colors: { primary: '#007bff' } }}
+                                >
+                                    {formData.petSelection}
+                                </Button>
+                            </View>
+                            <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+                                <PaperInput
+                                    label="Tên thú"
+                                    value={formData.petName}
+                                    onChangeText={val => handleInputChange('petName', val)}
+                                    mode="outlined"
+                                    style={{ marginBottom: 0 }}
+                                    outlineColor="#007bff"
+                                    activeOutlineColor="#007bff"
+                                    theme={{ colors: { primary: '#007bff' } }}
+                                />
+                            </View>
                         </View>
-                        <View style={styles.col}>
-                            <FormRow label="Tuổi">
-                                <TextInput style={styles.input} value={formData.age} onChangeText={val => handleInputChange('age', val)} placeholder="VD: 2" keyboardType="numeric" />
-                            </FormRow>
+                        <PaperText style={{ marginBottom: 6, fontWeight: '600' }}>Giống loài</PaperText>
+                        <Button
+                            mode="outlined"
+                            onPress={() => openPicker(speciesOptions, (val) => handleInputChange('species', val))}
+                            style={{ marginBottom: 14, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
+                            contentStyle={{ justifyContent: 'space-between' }}
+                            icon="dog"
+                            labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
+                            theme={{ colors: { primary: '#007bff' } }}
+                        >
+                            {formData.species || '-- Giống loài --'}
+                        </Button>
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                            <View style={{ flex: 1 }}>
+                                <PaperInput
+                                    label="Cân nặng (kg)"
+                                    value={formData.weight}
+                                    onChangeText={val => handleInputChange('weight', val)}
+                                    mode="outlined"
+                                    keyboardType="numeric"
+                                    style={{ marginBottom: 14 }}
+                                />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <PaperInput
+                                    label="Tuổi"
+                                    value={formData.age}
+                                    onChangeText={val => handleInputChange('age', val)}
+                                    mode="outlined"
+                                    keyboardType="numeric"
+                                    style={{ marginBottom: 14 }}
+                                />
+                            </View>
                         </View>
-                    </View>
-
-                    <FormRow label="Vắc xin đã tiêm">
-                        <TextInput style={styles.input} value={formData.vaccines} onChangeText={val => handleInputChange('vaccines', val)} placeholder="Liệt kê các loại vắc xin" />
-                    </FormRow>
-
-                    <FormRow label="Thời gian hẹn">
-                        <View style={styles.row}>
-                            <TouchableOpacity style={[styles.pickerContainer, { flex: 1, marginRight: 5 }]} onPress={() => setShowDatePicker(true)}>
-                                <Ionicons name="calendar-outline" size={20} color="#666" style={{ marginRight: 8 }} />
-                                <Text style={styles.pickerText}>{formData.date || 'Chọn ngày'}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.pickerContainer, { flex: 1, marginLeft: 5 }]} onPress={() => setShowTimePicker(true)}>
-                                <Ionicons name="time-outline" size={20} color="#666" style={{ marginRight: 8 }} />
-                                <Text style={styles.pickerText}>{formData.time || 'Chọn giờ'}</Text>
-                            </TouchableOpacity>
+                        <PaperInput
+                            label="Vắc xin đã tiêm trước khi đến phòng khám"
+                            value={formData.vaccines}
+                            onChangeText={val => handleInputChange('vaccines', val)}
+                            mode="outlined"
+                            placeholder="Liệt kê các loại vắc xin"
+                            style={{ marginBottom: 14 }}
+                            editable={formData.petSelection === 'Mới'}
+                        />
+                        <PaperText style={{ marginBottom: 6, fontWeight: '600' }}>Thời gian hẹn</PaperText>
+                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                            <Button
+                                mode="outlined"
+                                onPress={() => setShowDatePicker(true)}
+                                style={{ flex: 1, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
+                                icon="calendar"
+                                labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
+                                theme={{ colors: { primary: '#007bff' } }}
+                            >
+                                {formData.date || 'Chọn ngày'}
+                            </Button>
+                            <Button
+                                mode="outlined"
+                                onPress={() => setShowTimePicker(true)}
+                                style={{ flex: 1, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
+                                icon="clock"
+                                labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
+                                theme={{ colors: { primary: '#007bff' } }}
+                            >
+                                {formData.time || 'Chọn giờ'}
+                            </Button>
                         </View>
                         {showDatePicker && (
                             <DateTimePicker
@@ -336,83 +400,104 @@ export default function BookingScreen() {
                                 }}
                             />
                         )}
-                    </FormRow>
-
-                    <FormRow label="Bác sĩ">
-                        <MockPicker 
-                            label="-- Không chọn riêng --" 
-                            selectedValue={formData.doctor} 
+                        <PaperText style={{ marginBottom: 6, fontWeight: '600' }}>Bác sĩ</PaperText>
+                        <Button
+                            mode="outlined"
                             onPress={() => openPicker(doctorOptions, (val) => handleInputChange('doctor', val))}
-                        />
-                    </FormRow>
-
-                    <FormRow label="Dịch vụ">
-                        <MockPicker 
-                            label="Chọn dịch vụ" 
-                            selectedValue={services.find(s => s.serviceId.toString() === formData.serviceId)?.displayText || ''} 
+                            style={{ marginBottom: 14, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
+                            icon="account-heart"
+                            labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
+                            theme={{ colors: { primary: '#007bff' } }}
+                        >
+                            {formData.doctor || '-- Không chọn riêng --'}
+                        </Button>
+                        <PaperText style={{ marginBottom: 6, fontWeight: '600' }}>Dịch vụ</PaperText>
+                        <Button
+                            mode="outlined"
                             onPress={() => openPicker(serviceOptions.map(opt => opt.label), (val) => {
                                 const selected = serviceOptions.find(opt => opt.label === val);
                                 handleInputChange('serviceId', selected ? selected.value : '');
                             })}
+                            style={{ marginBottom: 14, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
+                            icon="medical-bag"
+                            labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
+                            theme={{ colors: { primary: '#007bff' } }}
+                        >
+                            {services.find(s => s.serviceId.toString() === formData.serviceId)?.displayText || 'Chọn dịch vụ'}
+                        </Button>
+                        <PaperInput
+                            label="Ghi chú"
+                            value={formData.notes}
+                            onChangeText={val => handleInputChange('notes', val)}
+                            mode="outlined"
+                            multiline
+                            style={{ marginBottom: 18, minHeight: 80, textAlignVertical: 'top' }}
                         />
-                    </FormRow>
-
-                    <FormRow label="Ghi chú">
-                        <TextInput style={[styles.input, styles.textArea]} value={formData.notes} onChangeText={val => handleInputChange('notes', val)} placeholder="Thêm ghi chú..." multiline />
-                    </FormRow>
-
-                    <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} disabled={submitting}>
-                        <Text style={styles.submitButtonText}>{submitting ? 'Đang gửi...' : 'Đặt lịch'}</Text>
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
-            
-            <Modal
-                visible={isPickerVisible}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setPickerVisible(false)}
-            >
-                <TouchableOpacity style={styles.modalContainer} activeOpacity={1} onPressOut={() => setPickerVisible(false)}>
-                    <TouchableWithoutFeedback>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Vui lòng chọn</Text>
+                        <Button
+                            mode="contained"
+                            onPress={handleSubmit}
+                            loading={submitting}
+                            disabled={submitting}
+                            style={{ marginTop: 10, borderRadius: 12, paddingVertical: 8, backgroundColor: '#007bff' }}
+                            contentStyle={{ height: 48 }}
+                            labelStyle={{ color: 'white', fontWeight: 'bold' }}
+                            theme={{ colors: { primary: '#007bff' } }}
+                        >
+                            {submitting ? 'Đang gửi...' : 'Đặt lịch'}
+                        </Button>
+                        {error && <PaperText style={{ color: '#e74c3c', textAlign: 'center', marginTop: 14, fontWeight: 'bold', fontSize: 16 }}>{error}</PaperText>}
+                        {success && <PaperText style={{ color: '#27ae60', textAlign: 'center', marginTop: 14, fontWeight: 'bold', fontSize: 16 }}>{success}</PaperText>}
+                    </Card.Content>
+                </Card>
+                {/* Thay Modal chọn picker bằng Dialog của Paper */}
+                <Portal>
+                    <Dialog visible={isPickerVisible} onDismiss={() => setPickerVisible(false)} style={{ borderRadius: 20, alignSelf: 'center', width: '80%', maxWidth: 350, borderColor: '#007bff', borderWidth: 1 }}>
+                        <Dialog.Title style={{ color: '#007bff', fontWeight: 'bold', textAlign: 'center' }}>Vui lòng chọn</Dialog.Title>
+                        <Dialog.Content style={{ paddingHorizontal: 0, maxHeight: 320 }}>
                             <ScrollView>
-                                {pickerData.items.map(item => (
-                                    <TouchableOpacity key={item} style={styles.modalItem} onPress={() => handlePickerSelect(item)}>
-                                        <Text style={styles.modalItemText}>{item}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                                <RadioButton.Group
+                                    onValueChange={value => { handlePickerSelect(value); }}
+                                    value={pickerData.items.includes(formData.petSelection) ? formData.petSelection : ''}
+                                >
+                                    {pickerData.items.map(item => (
+                                        <RadioButton.Item
+                                            key={item}
+                                            label={item}
+                                            value={item}
+                                            color="#007bff"
+                                            labelStyle={{ fontSize: 16 }}
+                                            style={{ borderRadius: 8, marginBottom: 2, marginHorizontal: 0 }}
+                                        />
+                                    ))}
+                                </RadioButton.Group>
                             </ScrollView>
-                            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setPickerVisible(false)}>
-                                <Text style={styles.modalCloseButtonText}>Đóng</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </TouchableWithoutFeedback>
-                </TouchableOpacity>
-            </Modal>
-            {error && <Text style={styles.errorText}>{error}</Text>}
-            {success && <Text style={styles.successText}>{success}</Text>}
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <Button onPress={() => setPickerVisible(false)} labelStyle={{ color: '#007bff', fontWeight: 'bold' }} theme={{ colors: { primary: '#007bff' } }}>Đóng</Button>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
+            </ScrollView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#f5f8ff' },
+    safeArea: { flex: 1, backgroundColor: '#ffffff' },
     container: { paddingBottom: 30 },
     header: { padding: 24, alignItems: 'center', backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' },
     headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#007bff', letterSpacing: 1, marginBottom: 4 },
     headerSubtitle: { fontSize: 15, color: '#666', textAlign: 'center', marginTop: 8 },
     formContainer: { paddingHorizontal: 20, marginTop: 18, backgroundColor: 'white', borderRadius: 16, shadowColor: '#007bff', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 3, paddingVertical: 18 },
     formRow: { marginBottom: 18 },
-    label: { fontSize: 16, fontWeight: '600', color: '#495057', marginBottom: 8 },
+    label: { fontSize: 16, fontWeight: '600', color: '#007bff', marginBottom: 8 },
     input: {
-        backgroundColor: '#f8fafd',
+        backgroundColor: '#007bff',
         paddingHorizontal: 15,
         paddingVertical: 12,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#ced4da',
+        borderColor: '#007bff',
         fontSize: 16,
         color: '#222',
     },
@@ -432,12 +517,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#f8fafd',
+        backgroundColor: '#007bff',
         paddingHorizontal: 15,
         paddingVertical: 12,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#ced4da',
+        borderColor: '#007bff',
         flex: 1,
     },
     pickerText: {
@@ -493,7 +578,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         alignItems: 'center',
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: '#007bff',
     },
     modalItemText: {
         fontSize: 17,
@@ -504,7 +589,7 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         alignItems: 'center',
         borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        borderTopColor: '#007bff',
     },
     modalCloseButtonText: {
         fontSize: 17,
