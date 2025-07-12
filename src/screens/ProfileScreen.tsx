@@ -63,9 +63,7 @@ const LoggedInView = ({ onLogout, user, onEdit, onOpenChangePwdModal }: { onLogo
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Cá nhân</Text>
             </View>
-            <Text style={{ textAlign: 'center', color: '#007bff', fontWeight: 'bold', marginTop: 8, marginBottom: 4 }}>
-                Chào mừng bạn đến với trang cá nhân!
-            </Text>
+        
 
             {/* 1. User Info */}
             <View style={styles.userInfoSection}>
@@ -73,22 +71,6 @@ const LoggedInView = ({ onLogout, user, onEdit, onOpenChangePwdModal }: { onLogo
                 <Text style={styles.userName}>{user.customerName || user.name}</Text>
             </View>
             {/* Dòng chức năng thông báo */}
-            {
-                // Giả lập số thông báo mới, bạn có thể thay bằng state thực tế nếu có API
-                (() => {
-                    return (
-                        <TouchableOpacity
-                            onPress={() => navigation.navigate('Notification' as never)}
-                            style={{ alignItems: 'center', marginVertical: 8 }}
-                        >
-                            <Text style={{ color: notificationCount > 0 ? '#e67e22' : '#888', fontWeight: 'bold' }}>
-                                {notificationCount > 0 ? `Bạn có ${notificationCount} thông báo mới` : 'Không có thông báo mới'}
-                            </Text>
-                        </TouchableOpacity>
-                    );
-                })()
-            }
-
             {/* 2. Personal Functions */}
             <Section>
                 <MenuItem icon="person-outline" text="Chỉnh sửa thông tin cá nhân" onPress={onEdit} />

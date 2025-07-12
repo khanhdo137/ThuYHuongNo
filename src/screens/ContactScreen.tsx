@@ -76,7 +76,6 @@ export default function ContactScreen() {
         <SafeAreaView style={styles.safeArea}>
             <ScrollView style={styles.container}>
                 <View style={styles.headerNew}>
-                    <Ionicons name="call" size={44} color="#007bff" style={{ marginBottom: 8 }} />
                     <Text style={styles.headerTitleNew}>Thông tin liên hệ</Text>
                     <Text style={styles.headerSubtitleNew}>Liên hệ với chúng tôi để được hỗ trợ nhanh chóng!</Text>
                 </View>

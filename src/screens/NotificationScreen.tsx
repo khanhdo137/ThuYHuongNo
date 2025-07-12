@@ -1,4 +1,5 @@
 import apiClient from '@/api/client';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -22,7 +23,6 @@ export default function NotificationScreen() {
   useEffect(() => {
     apiClient.get('/Appointment', { params: { status: 1, limit: 20, page: 1 } })
       .then(res => {
-        // Chỉ lấy các lịch có status === 1 (đã duyệt)
         const all: Appointment[] = res.data.appointments || res.data || [];
         setAppointments(all.filter((item: Appointment) => item.status === 1));
       })
@@ -40,40 +40,66 @@ export default function NotificationScreen() {
     }
   };
 
+  const getStatusText = (status: number) => {
+    switch (status) {
+      case 0: return 'Chờ xác nhận';
+      case 1: return 'Đã duyệt';
+      case 2: return 'Đã hoàn thành';
+      case 3: return 'Đã hủy';
+      default: return '';
+    }
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-        <Text style={{ color: '#007bff', fontWeight: 'bold', fontSize: 16 }}>{'< Quay lại'}</Text>
-      </TouchableOpacity>
-      <Text style={styles.header}>Thông báo lịch đã duyệt</Text>
+    <View style={{ flex: 1, backgroundColor: '#f6f8fa' }}>
+      {/* Header */}
+      <View style={styles.headerBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color="#007bff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Thông báo lịch đã duyệt</Text>
+        <Ionicons name="notifications" size={26} color="#007bff" style={{ marginRight: 16 }} />
+      </View>
+
       {loading && (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 40 }}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007bff" />
           <Text style={{ marginTop: 10, color: '#007bff' }}>Đang tải dữ liệu...</Text>
         </View>
       )}
-      {!loading && !appointments.length && <Text style={{ margin: 20, color: '#888', textAlign: 'center' }}>Không có lịch đã duyệt nào.</Text>}
+
+      {!loading && !appointments.length && (
+        <Text style={styles.emptyText}>Không có lịch đã duyệt nào.</Text>
+      )}
+
       {!loading && !!appointments.length && (
         <FlatList
           data={appointments}
           keyExtractor={(item: Appointment) => item.appointmentId?.toString()}
+          contentContainerStyle={{ paddingBottom: 24 }}
           renderItem={({ item }: { item: Appointment }) => (
-            <View style={[styles.card, { borderLeftWidth: 6, borderLeftColor: getStatusColor(item.status) }]}> 
-              <Text style={styles.title}>{item.serviceName} - {item.petName}</Text>
-              <View style={{ flexDirection: 'row', marginBottom: 4 }}>
-                <Text style={styles.label}>Ngày: </Text>
-                <Text>{item.appointmentDate}</Text>
-                <Text style={styles.label}>   Giờ: </Text>
-                <Text>{item.appointmentTime}</Text>
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <MaterialIcons name="event-available" size={28} color="#007bff" style={{ marginRight: 8 }} />
+                <Text style={styles.title}>{item.serviceName} - {item.petName}</Text>
               </View>
-              <Text>
+              <View style={styles.row}>
+                <Ionicons name="calendar" size={18} color="#888" style={{ marginRight: 4 }} />
+                <Text style={styles.label}>{item.appointmentDate}</Text>
+                <Ionicons name="time" size={18} color="#888" style={{ marginLeft: 12, marginRight: 4 }} />
+                <Text style={styles.label}>{item.appointmentTime}</Text>
+              </View>
+              <View style={styles.row}>
                 <Text style={styles.label}>Trạng thái: </Text>
-                <Text style={{ color: getStatusColor(item.status), fontWeight: 'bold' }}>{item.statusText}</Text>
-              </Text>
-              <Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}> 
+                  <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+                </View>
+              </View>
+              <View style={styles.row}>
+                <Ionicons name="person" size={18} color="#888" style={{ marginRight: 4 }} />
                 <Text style={styles.label}>Bác sĩ: </Text>
                 <Text>{item.doctorName || 'Chưa chỉ định'}</Text>
-              </Text>
+              </View>
             </View>
           )}
         />
@@ -83,40 +109,80 @@ export default function NotificationScreen() {
 }
 
 const styles = StyleSheet.create({
-  backBtn: {
-    padding: 15,
-    paddingBottom: 0,
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 36,
+    paddingBottom: 16,
+    backgroundColor: '#fff',
+    elevation: 4,
+    shadowColor: '#007bff',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    marginBottom: 4,
   },
-  header: {
-    fontSize: 24,
+  backBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
     fontWeight: 'bold',
-    margin: 20,
-    marginBottom: 10,
-    textAlign: 'center',
     color: '#007bff',
-    letterSpacing: 1,
-},
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  loadingContainer: {
+    flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 40,
+  },
+  emptyText: {
+    margin: 20, color: '#888', textAlign: 'center', fontSize: 16,
+  },
   card: {
     backgroundColor: '#fff',
-    marginHorizontal: 14,
+    marginHorizontal: 16,
     marginVertical: 10,
-    borderRadius: 14,
-    padding: 20,
-    elevation: 5,
+    borderRadius: 16,
+    padding: 18,
+    elevation: 4,
     shadowColor: '#007bff',
     shadowOpacity: 0.10,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
-},
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   title: {
     fontWeight: 'bold',
-    fontSize: 18,
-    marginBottom: 8,
+    fontSize: 17,
     color: '#007bff',
-},
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   label: {
     fontWeight: '600',
     color: '#555',
     fontSize: 15,
-},
+  },
+  statusBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    marginLeft: 4,
+  },
+  statusText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
 }); 
