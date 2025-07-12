@@ -1,5 +1,5 @@
 import apiClient from '@/api/client';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -14,18 +14,16 @@ interface Appointment {
   doctorName?: string;
 }
 
-const PAGE_SIZE = 5;
+const INITIAL_LOAD = 10;
+const LOAD_MORE = 5;
+const MAX_FETCH = 100;
 
 function sortAppointments(list: Appointment[]): Appointment[] {
-  // Chờ xác nhận (status == 0) lên đầu, trong mỗi nhóm sắp xếp theo ngày giờ gần nhất
+  // Sắp xếp theo ngày giờ gần nhất lên đầu
   return [...list].sort((a, b) => {
-    // Ưu tiên status == 0
-    if (a.status === 0 && b.status !== 0) return -1;
-    if (a.status !== 0 && b.status === 0) return 1;
-    // Cùng nhóm, so sánh ngày giờ gần nhất
     const dateA = new Date(a.appointmentDate + 'T' + (a.appointmentTime || '00:00')).getTime();
     const dateB = new Date(b.appointmentDate + 'T' + (b.appointmentTime || '00:00')).getTime();
-    return dateA - dateB;
+    return dateB - dateA;
   });
 }
 
@@ -39,31 +37,60 @@ const getStatusColor = (status: number) => {
   }
 };
 
+const getStatusText = (status: number) => {
+  switch (status) {
+    case 0: return 'Chờ duyệt';
+    case 1: return 'Đã duyệt';
+    case 2: return 'Đã hoàn thành';
+    case 3: return 'Đánh giá';
+    default: return '';
+  }
+};
+
 export default function MyAppointmentsScreen() {
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
   const navigation = useNavigation();
+  const route = useRoute();
+  const filter = (route.params as any)?.filter;
 
-  const fetchAppointments = async (pageNum = 1) => {
+  const fetchAppointments = async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get('/Appointment', { params: { page: pageNum, limit: PAGE_SIZE } });
-      const rawList: Appointment[] = res.data.appointments || res.data || [];
-      setAppointments(sortAppointments(rawList));
-      setTotalPages(res.data.pagination?.totalPages || 1);
+      const params: any = { page: 1, limit: MAX_FETCH };
+      if (typeof filter === 'number') {
+        params.status = filter;
+      }
+      const res = await apiClient.get('/Appointment', { params });
+      let rawList: Appointment[] = res.data.appointments || res.data || [];
+      if (typeof filter === 'number') {
+        rawList = rawList.filter(item => item.status === filter);
+      }
+      const sorted = sortAppointments(rawList);
+      setAllAppointments(sorted);
+      setAppointments(sorted.slice(0, INITIAL_LOAD));
     } catch {
+      setAllAppointments([]);
       setAppointments([]);
-      setTotalPages(1);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAppointments(page);
-  }, [page]);
+    fetchAppointments();
+  }, [filter]);
+
+  const handleLoadMore = () => {
+    if (loadingMore || appointments.length >= allAppointments.length) return;
+    setLoadingMore(true);
+    setTimeout(() => {
+      setAppointments(prev => allAppointments.slice(0, prev.length + LOAD_MORE));
+      setLoadingMore(false);
+    }, 400); // giả lập loading
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -83,45 +110,30 @@ export default function MyAppointmentsScreen() {
           data={appointments}
           keyExtractor={(item: Appointment) => item.appointmentId?.toString()}
           renderItem={({ item }: { item: Appointment }) => (
-            <View style={[styles.card, { borderLeftWidth: 6, borderLeftColor: getStatusColor(item.status) }]}> 
-              <Text style={styles.title}>{item.serviceName} - {item.petName}</Text>
-              <View style={{ flexDirection: 'row', marginBottom: 4 }}>
-                <Text style={styles.label}>Ngày: </Text>
-                <Text>{item.appointmentDate}</Text>
-                <Text style={styles.label}>   Giờ: </Text>
-                <Text>{item.appointmentTime}</Text>
+            <TouchableOpacity onPress={() => (navigation as any).navigate('AppointmentDetail', { appointmentId: item.appointmentId })}>
+              <View style={[styles.card, { borderLeftWidth: 6, borderLeftColor: getStatusColor(item.status) }]}> 
+                <Text style={styles.title}>{item.serviceName} - {item.petName}</Text>
+                <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                  <Text style={styles.label}>Ngày: </Text>
+                  <Text>{item.appointmentDate}</Text>
+                  <Text style={styles.label}>   Giờ: </Text>
+                  <Text>{item.appointmentTime}</Text>
+                </View>
+                <Text>
+                  <Text style={styles.label}>Trạng thái: </Text>
+                  <Text style={{ color: getStatusColor(item.status), fontWeight: 'bold' }}>{getStatusText(item.status)}</Text>
+                </Text>
+                <Text>
+                  <Text style={styles.label}>Bác sĩ: </Text>
+                  <Text>{item.doctorName || 'Chưa chỉ định'}</Text>
+                </Text>
               </View>
-              <Text>
-                <Text style={styles.label}>Trạng thái: </Text>
-                <Text style={{ color: getStatusColor(item.status), fontWeight: 'bold' }}>{item.statusText}</Text>
-              </Text>
-              <Text>
-                <Text style={styles.label}>Bác sĩ: </Text>
-                <Text>{item.doctorName || 'Chưa chỉ định'}</Text>
-              </Text>
-            </View>
+            </TouchableOpacity>
           )}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.2}
+          ListFooterComponent={loadingMore ? <ActivityIndicator style={{ margin: 16 }} /> : null}
         />
-      )}
-      {/* Phân trang */}
-      {!loading && totalPages > 1 && (
-        <View style={styles.paginationContainer}>
-          <TouchableOpacity
-            onPress={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            style={[styles.pageBtn, { opacity: page === 1 ? 0.5 : 1 }]}
-          >
-            <Text style={styles.pageBtnText}>Trang trước</Text>
-          </TouchableOpacity>
-          <Text style={styles.pageNumber}>{page} / {totalPages}</Text>
-          <TouchableOpacity
-            onPress={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            style={[styles.pageBtn, { opacity: page === totalPages ? 0.5 : 1 }]}
-          >
-            <Text style={styles.pageBtnText}>Trang sau</Text>
-          </TouchableOpacity>
-        </View>
       )}
     </View>
   );
@@ -163,33 +175,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#555',
     fontSize: 15,
-},
-  paginationContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 18,
-    backgroundColor: '#fff',
-},
-  pageBtn: {
-    marginHorizontal: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#007bff',
-    borderRadius: 10,
-    shadowColor: '#007bff',
-    shadowOpacity: 0.10,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-},
-  pageBtnText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 15,
-},
-  pageNumber: {
-    fontWeight: 'bold',
-    fontSize: 17,
-    marginHorizontal: 8,
 },
 }); 

@@ -44,6 +44,7 @@ const LoggedInView = ({ onLogout, user, onEdit, onOpenChangePwdModal }: { onLogo
     const [isDarkMode, setIsDarkMode] = React.useState(colorScheme === 'dark');
     const toggleDarkMode = () => setIsDarkMode(previousState => !previousState);
     const navigation = useNavigation();
+    const nav: any = navigation;
     const [notificationCount, setNotificationCount] = React.useState(0);
 
     React.useEffect(() => {
@@ -60,11 +61,6 @@ const LoggedInView = ({ onLogout, user, onEdit, onOpenChangePwdModal }: { onLogo
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Cá nhân</Text>
-            </View>
-        
-
             {/* 1. User Info */}
             <View style={styles.userInfoSection}>
                 <Image source={{ uri: user.avatar || DEFAULT_AVATAR }} style={styles.avatar} />
@@ -85,13 +81,36 @@ const LoggedInView = ({ onLogout, user, onEdit, onOpenChangePwdModal }: { onLogo
 
             {/* My Pets Section */}
             <Section>
-                <MenuItem icon="paw-outline" text="Thú cưng của tôi" onPress={() => navigation.navigate('MyPets' as never)} />
+                <MenuItem icon="paw-outline" text="Thú cưng của tôi" onPress={() => nav.navigate('MyPets' as never)} />
             </Section>
             
-            {/* 3. History & Activity */}
-            <Section>
-                    <MenuItem icon="time-outline" text="Lịch sử & hoạt động" onPress={() => navigation.navigate('MyAppointments' as never)} />
-            </Section>
+            {/* Lịch đã đặt Section */}
+            <View style={styles.sectionContainer}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, marginTop: 10 }}>
+                    <Text style={styles.sectionTitle}>Lịch đã đặt</Text>
+                    <TouchableOpacity onPress={() => nav.navigate('MyAppointments' as never)}>
+                        <Text style={{ color: '#007bff', fontWeight: 'bold', fontSize: 15 }}>Xem lịch sử đặt lịch {'>'}</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 18 }}>
+                    <TouchableOpacity style={styles.orderStatusItem} onPress={() => nav.navigate('MyAppointments' as any, { filter: 0 })}>
+                        <Ionicons name="document-text-outline" size={32} color="#0D47A1" />
+                        <Text style={styles.orderStatusText}>Chờ duyệt</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.orderStatusItem} onPress={() => nav.navigate('MyAppointments' as any, { filter: 1 })}>
+                        <Ionicons name="checkmark-done-outline" size={32} color="#42A5F5" />
+                        <Text style={styles.orderStatusText}>Đã duyệt</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.orderStatusItem} onPress={() => nav.navigate('MyAppointments' as any, { filter: 2 })}>
+                        <Ionicons name="ribbon-outline" size={32} color="#27ae60" />
+                        <Text style={styles.orderStatusText}>Hoàn thành</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.orderStatusItem} onPress={() => nav.navigate('Review' as any)}>
+                        <Ionicons name="star-outline" size={32} color="#FFC107" />
+                        <Text style={styles.orderStatusText}>Đánh giá</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
 
             {/* 4. Support & Info */}
             <Section>
@@ -476,5 +495,16 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         borderRadius: 8,
         fontSize: 16,
+    },
+    orderStatusItem: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        flex: 1,
+    },
+    orderStatusText: {
+        marginTop: 6,
+        fontSize: 14,
+        color: '#222',
+        fontWeight: '500',
     },
 }); 
