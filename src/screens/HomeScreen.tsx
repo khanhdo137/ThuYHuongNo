@@ -354,25 +354,44 @@ export default function HomeScreen() {
                         ))}
                     </Swiper>
                 </View>
-                <View style={{ flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4 }}>
+                <View style={{ flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 8 }}>
                     {TABS.map((tab, idx) => (
-                        <Button
+                        <TouchableOpacity
                             key={tab}
-                            mode={activeTab === idx ? 'contained' : 'text'}
                             onPress={() => {
                                 setActiveTab(idx);
                                 setResetSignal(s => s + 1);
                             }}
-                            style={{ flex: 1, marginHorizontal: 4, borderRadius: 20 }}
-                            labelStyle={{ color: activeTab === idx ? 'white' : '#007bff', fontWeight: 'bold' }}
-                            contentStyle={{ height: 40 }}
+                            style={{
+                                flex: 1,
+                                marginHorizontal: 4,
+                                backgroundColor: activeTab === idx ? '#007bff' : 'white',
+                                paddingVertical: 10,
+                                borderRadius: 20,
+                                borderWidth: 1,
+                                borderColor: '#007bff',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: 40,
+                            }}
                         >
-                            {tab}
-                        </Button>
+                            <Text
+                                style={{
+                                    color: activeTab === idx ? 'white' : '#007bff',
+                                    fontWeight: 'bold',
+                                    fontSize: 13,
+                                    textAlign: 'center',
+                                }}
+                                numberOfLines={2}
+                                ellipsizeMode="tail"
+                            >
+                                {tab}
+                            </Text>
+                        </TouchableOpacity>
                     ))}
                 </View>
                 <Divider />
-                <ScrollView style={{ flex: 1 }}>
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
                     {renderContent()}
                 </ScrollView>
             </Surface>

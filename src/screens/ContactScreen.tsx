@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
-import { Alert, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Card } from 'react-native-paper';
 
 interface ContactInfo {
@@ -10,6 +11,14 @@ interface ContactInfo {
     details: string[];
     type: 'map' | 'email' | 'tel';
 }
+
+// Tọa độ phòng khám thú y Hương Nở - Thủ Dầu Một, Bình Dương
+const CLINIC_COORDINATES = {
+    latitude: 10982545, // Tọa độ chính xác cho Thủ Dầu Một, Bình Dương
+    longitude: 106.674601,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+};
 
 const contactData: ContactInfo[] = [
     {
@@ -27,7 +36,7 @@ const contactData: ContactInfo[] = [
     {
         icon: 'call-outline',
         title: 'Số điện thoại',
-        details: ['02742480616', '0973560989'],
+        details: ['2742486163560989'],
         type: 'tel'
     }
 ];
@@ -69,20 +78,55 @@ const ContactInfoRow = ({ item }: { item: ContactInfo }) => (
     </Card>
 );
 
+const MapSection = () => (
+    <Card style={styles.mapCard} elevation={3}>
+        <View style={styles.mapHeader}>
+            <Ionicons name="map-outline" size={24} color="#007bff" />
+            <Text style={styles.mapTitle}>Vị trí phòng khám</Text>
+        </View>
+        <MapView
+            style={styles.map}
+            provider={PROVIDER_GOOGLE}
+            initialRegion={CLINIC_COORDINATES}
+            showsUserLocation={true}
+            showsMyLocationButton={true}
+        >
+            <Marker
+                coordinate={CLINIC_COORDINATES}
+                title="Phòng khám thú y Hương Nở"
+                description="235 Đ. Phú Lợi, Khu 4, Thủ Dầu Một, Bình Dương"
+                pinColor="#07f"
+            />
+        </MapView>
+        <TouchableOpacity 
+            style={styles.directionsButton}
+            onPress={() => handlePress('map', '235 Đ. Phú Lợi, Khu 4, Thủ Dầu Một, Bình Dương')}
+        >
+            <Ionicons name="navigate-outline" size={20} color="white" />
+            <Text style={styles.directionsButtonText}>Chỉ đường</Text>
+        </TouchableOpacity>
+    </Card>
+);
+
 export default function ContactScreen() {
     const navigation = useNavigation();
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <ScrollView style={styles.container}>
+            <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
                 <View style={styles.headerNew}>
                     <Text style={styles.headerTitleNew}>Thông tin liên hệ</Text>
                     <Text style={styles.headerSubtitleNew}>Liên hệ với chúng tôi để được hỗ trợ nhanh chóng!</Text>
                 </View>
                 <View style={styles.contentNew}>
+                    {/* Bản đồ */}
+                    <MapSection />
+                    
+                    {/* Thông tin liên hệ */}
                     {contactData.map((item, index) => (
                         <ContactInfoRow key={index} item={item} />
                     ))}
+                    
                     <View style={styles.chatSectionNew}>
                         <Text style={styles.chatSectionTitleNew}>Hỗ trợ trực tuyến</Text>
                         <TouchableOpacity
@@ -143,6 +187,52 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'center',
         marginTop: 2,
+    },
+    // Map
+    mapCard: {
+        borderRadius: 18,
+        marginBottom: 18,
+        backgroundColor: 'white',
+        shadowColor: '#007bff',
+        shadowOpacity: 0.8,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 3,
+        overflow: 'hidden',
+    },
+    mapHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#f8f9fa',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e9ecef',
+    },
+    mapTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#007bff',
+        marginLeft: 8,
+    },
+    map: {
+        height: 250,
+        width: Dimensions.get('window').width,
+    },
+    directionsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#007bff',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        margin: 16,
+        borderRadius: 8,
+    },
+    directionsButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginLeft: 8,
     },
     // Card
     card: {

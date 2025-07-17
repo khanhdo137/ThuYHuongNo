@@ -42,7 +42,7 @@ const getStatusText = (status: number) => {
     case 0: return 'Chờ duyệt';
     case 1: return 'Đã duyệt';
     case 2: return 'Đã hoàn thành';
-    case 3: return 'Đánh giá';
+    case 3: return 'Đã hủy';
     default: return '';
   }
 };

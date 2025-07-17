@@ -156,6 +156,7 @@ export default function ProfileScreen() {
     const [newPassword, setNewPassword] = React.useState('');
     const [confirmPassword, setConfirmPassword] = React.useState('');
     const [pwdLoading, setPwdLoading] = React.useState(false);
+    const [editingField, setEditingField] = React.useState<string | null>(null);
 
     React.useEffect(() => {
         const checkLogin = async () => {
@@ -181,22 +182,27 @@ export default function ProfileScreen() {
     };
 
     const handleEdit = () => {
-        setEditData({ ...user });
+        setEditData({
+            customerName: user.customerName || user.name || '',
+            address: user.address || '',
+            gender: user.gender !== undefined ? user.gender : 0,
+            email: user.email || '',
+            phoneNumber: user.phoneNumber || '',
+        });
         setEditModalVisible(true);
     };
 
     const handleSaveEdit = async () => {
         setLoading(true);
         try {
-            const body = {
+            await apiClient.put('/User/update-customer', {
                 customerName: editData.customerName,
                 address: editData.address,
                 gender: editData.gender,
                 email: editData.email,
                 phoneNumber: editData.phoneNumber,
-            };
-            await apiClient.put('/User/update-customer', body);
-            setUser((prev: any) => ({ ...prev, ...body }));
+            });
+            setUser((prev: any) => ({ ...prev, ...editData }));
             setEditModalVisible(false);
             Alert.alert('Thành công', 'Cập nhật thông tin thành công!');
         } catch (error) {
@@ -209,6 +215,27 @@ export default function ProfileScreen() {
             setLoading(false);
         }
     };
+
+    const handleFieldEdit = (field: string) => setEditingField(field);
+    const handleFieldSave = async (field: string) => {
+        setLoading(true);
+        try {
+            const body: any = { [field]: editData[field] };
+            await apiClient.put('/User/update-customer', body);
+            setUser((prev: any) => ({ ...prev, ...body }));
+            setEditingField(null);
+            Alert.alert('Thành công', 'Cập nhật thông tin thành công!');
+        } catch (error) {
+            let errorMessage = 'Đã xảy ra lỗi khi cập nhật.';
+            if (error && typeof error === 'object' && 'response' in error && error.response && typeof error.response === 'object' && 'data' in error.response && error.response.data && typeof error.response.data === 'object' && 'message' in error.response.data) {
+                errorMessage = (error.response.data as { message?: string }).message || errorMessage;
+            }
+            Alert.alert('Lỗi', errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    };
+    const handleFieldCancel = () => setEditingField(null);
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -223,51 +250,74 @@ export default function ProfileScreen() {
                 onRequestClose={() => setEditModalVisible(false)}
             >
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
-                    <View style={{ backgroundColor: 'white', borderRadius: 10, padding: 20, width: '90%' }}>
-                        <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>Chỉnh sửa thông tin</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={editData.customerName}
-                            onChangeText={v => setEditData({ ...editData, customerName: v })}
-                            placeholder="Họ và tên"
-                        />
-                        <TextInput
-                            style={styles.input}
-                            value={editData.address}
-                            onChangeText={v => setEditData({ ...editData, address: v })}
-                            placeholder="Địa chỉ"
-                        />
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                            <Text style={{ marginRight: 10 }}>Giới tính:</Text>
-                            <TouchableOpacity onPress={() => setEditData({ ...editData, gender: 0 })} style={{ marginRight: 10 }}>
-                                <Text style={{ color: editData.gender === 0 ? '#007bff' : '#888' }}>Nam</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setEditData({ ...editData, gender: 1 })}>
-                                <Text style={{ color: editData.gender === 1 ? '#007bff' : '#888' }}>Nữ</Text>
+                    <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, width: '92%' }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <Text style={{ fontSize: 20, fontWeight: 'bold' }}>Chỉnh sửa thông tin</Text>
+                            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                                <Ionicons name="close" size={28} color="#888" />
                             </TouchableOpacity>
                         </View>
-                        <TextInput
-                            style={styles.input}
-                            value={editData.email}
-                            onChangeText={v => setEditData({ ...editData, email: v })}
-                            placeholder="Email"
-                            keyboardType="email-address"
-                        />
-                        <TextInput
-                            style={styles.input}
-                            value={editData.phoneNumber}
-                            onChangeText={v => setEditData({ ...editData, phoneNumber: v })}
-                            placeholder="Số điện thoại"
-                            keyboardType="phone-pad"
-                        />
-                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
-                            <TouchableOpacity onPress={() => setEditModalVisible(false)} style={{ marginRight: 15 }} disabled={loading}>
-                                <Text style={{ color: '#888', fontSize: 16 }}>Hủy</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={handleSaveEdit} disabled={loading}>
-                                {loading ? <ActivityIndicator /> : <Text style={{ color: '#007bff', fontSize: 16 }}>Lưu</Text>}
-                            </TouchableOpacity>
+                        {/* Họ và tên */}
+                        <View style={{ marginBottom: 14 }}>
+                            <Text style={{ fontSize: 16, marginBottom: 4 }}>Họ và tên:</Text>
+                            <TextInput
+                                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, fontSize: 16 }}
+                                value={editData.customerName}
+                                onChangeText={v => setEditData({ ...editData, customerName: v })}
+                                placeholder="Họ và tên"
+                            />
                         </View>
+                        {/* Địa chỉ */}
+                        <View style={{ marginBottom: 14 }}>
+                            <Text style={{ fontSize: 16, marginBottom: 4 }}>Địa chỉ:</Text>
+                            <TextInput
+                                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, fontSize: 16 }}
+                                value={editData.address}
+                                onChangeText={v => setEditData({ ...editData, address: v })}
+                                placeholder="Địa chỉ"
+                            />
+                        </View>
+                        {/* Email */}
+                        <View style={{ marginBottom: 14 }}>
+                            <Text style={{ fontSize: 16, marginBottom: 4 }}>Email:</Text>
+                            <TextInput
+                                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, fontSize: 16 }}
+                                value={editData.email}
+                                onChangeText={v => setEditData({ ...editData, email: v })}
+                                placeholder="Email"
+                                keyboardType="email-address"
+                            />
+                        </View>
+                        {/* Số điện thoại */}
+                        <View style={{ marginBottom: 14 }}>
+                            <Text style={{ fontSize: 16, marginBottom: 4 }}>Số điện thoại:</Text>
+                            <TextInput
+                                style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, fontSize: 16 }}
+                                value={editData.phoneNumber}
+                                onChangeText={v => setEditData({ ...editData, phoneNumber: v })}
+                                placeholder="Số điện thoại"
+                                keyboardType="phone-pad"
+                            />
+                        </View>
+                        {/* Giới tính */}
+                        <View style={{ marginBottom: 18 }}>
+                            <Text style={{ fontSize: 16, marginBottom: 4 }}>Giới tính:</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <TouchableOpacity onPress={() => setEditData({ ...editData, gender: 0 })} style={{ marginRight: 20 }}>
+                                    <Text style={{ color: editData.gender === 0 ? '#007bff' : '#888', fontWeight: 'bold' }}>Nam</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setEditData({ ...editData, gender: 1 })}>
+                                    <Text style={{ color: editData.gender === 1 ? '#007bff' : '#888', fontWeight: 'bold' }}>Nữ</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                        <TouchableOpacity
+                            style={{ backgroundColor: '#007bff', paddingVertical: 14, borderRadius: 10, alignItems: 'center' }}
+                            onPress={handleSaveEdit}
+                            disabled={loading}
+                        >
+                            <Text style={{ color: 'white', fontSize: 17, fontWeight: 'bold' }}>{loading ? 'Đang lưu...' : 'Xác nhận'}</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
@@ -354,7 +404,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#f2f2f7',
     },
     container: {
-        paddingBottom: 20,
+        paddingBottom: 100,
     },
     header: {
         paddingVertical: 28,

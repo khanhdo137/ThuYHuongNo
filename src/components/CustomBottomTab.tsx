@@ -1,6 +1,7 @@
 import { Feather, FontAwesome, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
-import { Animated, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useNotificationCount } from '../context/NotificationCountContext';
 
 const TAB_HEIGHT = 60;
 const ICON_SIZE = 22;
@@ -16,6 +17,7 @@ const ICONS = [
 ];
 
 const CustomBottomTab = ({ state, navigation }: { state: any; navigation: any }) => {
+  const { count } = useNotificationCount();
   return (
     <View style={styles.container}>
       {ICONS.map((icon, idx) => {
@@ -43,6 +45,7 @@ const CustomBottomTab = ({ state, navigation }: { state: any; navigation: any })
                 }),
               ]}
             >
+              {/* Icon render */}
               {icon.lib === Ionicons && (
                 <Ionicons
                   name={icon.name as any}
@@ -75,6 +78,12 @@ const CustomBottomTab = ({ state, navigation }: { state: any; navigation: any })
                   style={isActive ? { transform: [{ scale: ACTIVE_SCALE }] } : undefined}
                 />
               )}
+              {/* Badge for notification */}
+              {icon.route === 'Notification' && count > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{count > 99 ? '99+' : count}</Text>
+                </View>
+              )}
             </Animated.View>
           </TouchableOpacity>
         );
@@ -88,8 +97,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#0D47A1', // Nền bottom bar
     borderRadius: 24,
-    marginHorizontal: 0,
-    marginBottom: 0,
+    marginHorizontal: 16,
+    marginBottom: 16,
     height: TAB_HEIGHT,
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -99,11 +108,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 8,
-    width: '100%',
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
   },
   tabButton: {
     flex: 1,
@@ -134,6 +138,24 @@ const styles = StyleSheet.create({
   shadowAndroid: {
     elevation: 10,
     shadowColor: 'rgba(0,0,0,0.25)',
+  },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#e74c3c',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    zIndex: 10,
+  },
+  badgeText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 11,
   },
 });
 

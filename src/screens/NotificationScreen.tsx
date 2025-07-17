@@ -3,6 +3,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useNotificationCount } from '../context/NotificationCountContext';
 
 interface Appointment {
   appointmentId: number;
@@ -19,14 +20,20 @@ export default function NotificationScreen() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
+  const { setCount } = useNotificationCount();
 
   useEffect(() => {
-    apiClient.get('/Appointment', { params: { status: 1, limit: 20, page: 1 } })
+    apiClient.get('/Appointment', { params: { limit: 20, page: 1 } })
       .then(res => {
         const all: Appointment[] = res.data.appointments || res.data || [];
-        setAppointments(all.filter((item: Appointment) => item.status === 1));
+        const filtered = all.filter((item: Appointment) => item.status === 1 || item.status === 3);
+        setAppointments(filtered);
+        setCount(filtered.length);
       })
-      .catch(() => setAppointments([]))
+      .catch(() => {
+        setAppointments([]);
+        setCount(0);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -57,7 +64,7 @@ export default function NotificationScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#007bff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Thông báo lịch đã duyệt</Text>
+        <Text style={styles.headerTitle}>Thông báo lịch đã duyệt & đã hủy</Text>
         <Ionicons name="notifications" size={26} color="#007bff" style={{ marginRight: 16 }} />
       </View>
 
