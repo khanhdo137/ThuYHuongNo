@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View, Keyboard } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import geminiService, { fetchAllServicesForPrompt } from '../services/geminiService';
 
 interface Message {
@@ -16,10 +17,12 @@ const initialMessages: Message[] = [
 ];
 
 export default function ChatBotScreen() {
+    const navigation = useNavigation();
     const [messages, setMessages] = useState<Message[]>(initialMessages);
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
     const flatListRef = useRef<FlatList>(null);
 
     useEffect(() => {
@@ -36,6 +39,21 @@ export default function ChatBotScreen() {
             };
             setMessages(prev => [...prev, warningMessage]);
         }
+    }, []);
+
+    // Xử lý keyboard events
+    useEffect(() => {
+        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+            setKeyboardHeight(e.endCoordinates.height);
+        });
+        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+            setKeyboardHeight(0);
+        });
+
+        return () => {
+            keyboardDidShowListener?.remove();
+            keyboardDidHideListener?.remove();
+        };
     }, []);
 
     const handleSend = async () => {
@@ -115,6 +133,10 @@ Câu hỏi của khách hàng: ${userMessage.text}`;
         );
     };
 
+    const handleGoBack = () => {
+        navigation.goBack();
+    };
+
     const renderMessage = ({ item }: { item: Message }) => {
         const isUser = item.sender === 'user';
         return (
@@ -138,6 +160,12 @@ Câu hỏi của khách hàng: ${userMessage.text}`;
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.header}>
+                <TouchableOpacity 
+                    style={styles.backButton}
+                    onPress={handleGoBack}
+                >
+                    <Ionicons name="arrow-back" size={24} color="#007bff" />
+                </TouchableOpacity>
                 <Text style={styles.headerTitle}>Chatbot Tư vấn AI</Text>
                 <View style={styles.headerControls}>
                     {!apiKeyConfigured && (
@@ -150,19 +178,22 @@ Câu hỏi của khách hàng: ${userMessage.text}`;
                     )}
                 </View>
             </View>
-            <KeyboardAvoidingView 
-                style={styles.container} 
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-            >
+            <View style={styles.container}>
                 <FlatList
                     ref={flatListRef}
                     data={messages}
                     renderItem={renderMessage}
                     keyExtractor={item => item.id}
-                    contentContainerStyle={styles.messageList}
+                    contentContainerStyle={[
+                        styles.messageList,
+                        { paddingBottom: keyboardHeight > 0 ? 20 : 10 }
+                    ]}
+                    style={styles.flatList}
                 />
-                <View style={styles.inputContainer}>
+                <View style={[
+                    styles.inputContainer,
+                    { marginBottom: keyboardHeight > 0 ? 0 : 0 }
+                ]}>
                     <TextInput
                         style={styles.input}
                         value={inputText}
@@ -185,25 +216,40 @@ Câu hỏi của khách hàng: ${userMessage.text}`;
                         )}
                     </TouchableOpacity>
                 </View>
-            </KeyboardAvoidingView>
+            </View>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: 'white' },
-    container: { flex: 1 },
+    container: { 
+        flex: 1,
+        position: 'relative'
+    },
     header: {
         paddingVertical: 16,
         paddingHorizontal: 20,
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: '#f0f0f0',
+        zIndex: 10,
     },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', flex: 1 },
+    backButton: {
+        padding: 8,
+        marginRight: 12,
+        borderRadius: 20,
+        backgroundColor: '#f0f8ff',
+    },
+    headerTitle: { 
+        fontSize: 20, 
+        fontWeight: 'bold', 
+        flex: 1,
+        textAlign: 'center',
+        marginRight: 40, // Để cân bằng với back button
+    },
     headerControls: {
         flexDirection: 'row',
         gap: 10,
@@ -213,9 +259,13 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: '#FFE8E8',
     },
+    flatList: {
+        flex: 1,
+    },
     messageList: {
         paddingHorizontal: 10,
         paddingTop: 10,
+        flexGrow: 1,
     },
     messageRow: {
         flexDirection: 'row',
@@ -256,6 +306,11 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#f0f0f0',
         backgroundColor: 'white',
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 5,
     },
     input: {
         flex: 1,

@@ -7,9 +7,10 @@ const generation_config = GEMINI_CONFIG.GENERATION_CONFIG;
 
 // Danh sách các model có sẵn
 export const AVAILABLE_MODELS = [
-    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
     { id: 'gemini-pro', name: 'Gemini Pro' },
+    { id: 'gemini-pro-vision', name: 'Gemini Pro Vision' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
 ];
 
 // Interface cho response từ Gemini
@@ -37,15 +38,33 @@ class GeminiService {
         // Sử dụng API key từ config
         const apiKey = GEMINI_CONFIG.API_KEY;
         
-        if (apiKey && apiKey !== 'YOUR_GEMINI_API_KEY_HERE') {
-            this.genAI = new GoogleGenerativeAI(apiKey);
+        if (apiKey && apiKey !== 'YOUR_GEMINI_API_KEY_HERE' && apiKey.length > 20) {
+            try {
+                this.genAI = new GoogleGenerativeAI(apiKey);
+                console.log('Gemini API initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize Gemini API:', error);
+                this.genAI = null;
+            }
+        } else {
+            console.warn('Gemini API key not configured or invalid');
+            this.genAI = null;
         }
     }
 
     // Phương thức để set API key từ bên ngoài
     public setApiKey(apiKey: string) {
-        if (apiKey) {
-            this.genAI = new GoogleGenerativeAI(apiKey);
+        if (apiKey && apiKey.length > 20) {
+            try {
+                this.genAI = new GoogleGenerativeAI(apiKey);
+                console.log('Gemini API key updated successfully');
+            } catch (error) {
+                console.error('Failed to set Gemini API key:', error);
+                this.genAI = null;
+            }
+        } else {
+            console.warn('Invalid API key provided');
+            this.genAI = null;
         }
     }
 
@@ -115,13 +134,27 @@ Hãy trả lời một cách hữu ích và chuyên nghiệp:
                 text: text || 'Xin lỗi, tôi không thể trả lời câu hỏi này lúc này. Vui lòng thử lại sau.'
             };
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Lỗi khi gọi Gemini API:', error);
             
-            // Trả về câu trả lời mặc định khi có lỗi
+            // Xử lý các loại lỗi khác nhau
+            let errorMessage = 'Xin lỗi, hiện tại tôi gặp sự cố kỹ thuật. Vui lòng thử lại sau hoặc liên hệ trực tiếp với phòng khám để được hỗ trợ.';
+            let errorCode = 'API_ERROR';
+            
+            if (error.message?.includes('API_KEY_INVALID') || error.message?.includes('API key')) {
+                errorMessage = 'API key không hợp lệ hoặc đã hết hạn. Vui lòng liên hệ quản trị viên để cập nhật API key.';
+                errorCode = 'API_KEY_INVALID';
+            } else if (error.message?.includes('quota') || error.message?.includes('limit')) {
+                errorMessage = 'Đã vượt quá giới hạn sử dụng API. Vui lòng thử lại sau.';
+                errorCode = 'QUOTA_EXCEEDED';
+            } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+                errorMessage = 'Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet và thử lại.';
+                errorCode = 'NETWORK_ERROR';
+            }
+            
             return {
-                text: 'Xin lỗi, hiện tại tôi gặp sự cố kỹ thuật. Vui lòng thử lại sau hoặc liên hệ trực tiếp với phòng khám để được hỗ trợ.',
-                error: 'API_ERROR'
+                text: errorMessage,
+                error: errorCode
             };
         }
     }
