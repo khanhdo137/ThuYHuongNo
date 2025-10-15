@@ -44,6 +44,9 @@ export default function DirectConsultationScreen() {
     const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
     const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
     const [hasNewMessages, setHasNewMessages] = useState(false);
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const isUnmountedRef = useRef(false);
+    const hasUnauthorizedRef = useRef(false);
 
     useEffect(() => {
         initializeChat();
@@ -63,11 +66,15 @@ export default function DirectConsultationScreen() {
         });
 
         return () => {
+            console.log('🧹 Cleaning up DirectConsultationScreen...');
+            isUnmountedRef.current = true;
             keyboardDidShowListener?.remove();
             keyboardDidHideListener?.remove();
             // Clear auto-refresh interval when component unmounts
-            if (autoRefreshInterval) {
-                clearInterval(autoRefreshInterval);
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+                console.log('⏹️ Auto-refresh stopped on unmount');
             }
         };
     }, []);
@@ -80,13 +87,6 @@ export default function DirectConsultationScreen() {
             }, 100);
         }
     }, [messages]);
-
-    // Cleanup auto-refresh when component unmounts
-    useEffect(() => {
-        return () => {
-            stopAutoRefresh();
-        };
-    }, []);
 
     const initializeChat = async () => {
         try {
@@ -137,34 +137,54 @@ export default function DirectConsultationScreen() {
     };
 
     const loadMessages = async (roomId: number, showLoading = false) => {
+        // Không load nếu component đã unmount hoặc đã có lỗi unauthorized
+        if (isUnmountedRef.current || hasUnauthorizedRef.current) {
+            console.log('⏭️ Skipping loadMessages - component unmounted or unauthorized');
+            return;
+        }
+        
         try {
             if (showLoading) {
                 setIsLoading(true);
             }
             
-            const response = await apiClient.get(`/Chat/room/${roomId}/messages`);
-            const messages = response.data.messages || [];
+            // Tăng limit để load nhiều tin nhắn hơn
+            const response = await apiClient.get(`/Chat/room/${roomId}/messages`, {
+                params: { limit: 200 } // Tăng từ 50 (default) lên 200
+            });
+            const newMessages = response.data.messages || [];
             
             // Remove duplicates based on messageId
-            const uniqueMessages = messages.filter((message: ChatMessage, index: number, self: ChatMessage[]) => 
+            const uniqueMessages = newMessages.filter((message: ChatMessage, index: number, self: ChatMessage[]) => 
                 index === self.findIndex(m => m.messageId === message.messageId)
             );
             
-            const previousCount = messages.length;
-            setMessages(uniqueMessages);
-            
-            // Check if there are new messages
-            if (uniqueMessages.length > previousCount) {
-                setHasNewMessages(true);
-                // Auto scroll to bottom for new messages
-                setTimeout(() => {
-                    flatListRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-            }
+            // So sánh với số lượng tin nhắn hiện tại
+            setMessages(prevMessages => {
+                const previousCount = prevMessages.length;
+                
+                // Check if there are new messages
+                if (uniqueMessages.length > previousCount) {
+                    setHasNewMessages(true);
+                    // Auto scroll to bottom for new messages
+                    setTimeout(() => {
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                    }, 100);
+                }
+                
+                return uniqueMessages;
+            });
             
             console.log(`📨 Loaded ${uniqueMessages.length} messages for room ${roomId}`);
         } catch (error: any) {
             console.error('Error loading messages:', error);
+            
+            // Nếu lỗi 401 (Unauthorized), đánh dấu và dừng auto-refresh
+            if (error.response?.status === 401) {
+                console.log('🔒 Unauthorized - marking and stopping auto-refresh');
+                hasUnauthorizedRef.current = true;
+                stopAutoRefresh();
+            }
         } finally {
             if (showLoading) {
                 setIsLoading(false);
@@ -176,28 +196,47 @@ export default function DirectConsultationScreen() {
         console.log('🔄 Starting auto-refresh for room:', roomId);
         
         // Clear existing interval
-        if (autoRefreshInterval) {
-            clearInterval(autoRefreshInterval);
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
         }
+        
+        // Reset unauthorized flag khi bắt đầu auto-refresh mới
+        hasUnauthorizedRef.current = false;
         
         // Set up new interval - check for new messages every 3 seconds
         const interval = setInterval(async () => {
+            // Kiểm tra trước khi gọi API
+            if (isUnmountedRef.current || hasUnauthorizedRef.current) {
+                console.log('⏹️ Stopping auto-refresh - component unmounted or unauthorized');
+                stopAutoRefresh();
+                return;
+            }
+            
             try {
                 setIsAutoRefreshing(true);
                 await loadMessages(roomId, false);
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Auto-refresh error:', error);
+                // Nếu lỗi 401, đánh dấu và dừng auto-refresh
+                if (error.response?.status === 401) {
+                    console.log('🔒 Unauthorized in auto-refresh - marking and stopping');
+                    hasUnauthorizedRef.current = true;
+                    stopAutoRefresh();
+                }
             } finally {
                 setIsAutoRefreshing(false);
             }
         }, 3000); // Check every 3 seconds
         
+        intervalRef.current = interval as unknown as NodeJS.Timeout;
         setAutoRefreshInterval(interval as any);
     };
 
     const stopAutoRefresh = () => {
-        if (autoRefreshInterval) {
-            clearInterval(autoRefreshInterval);
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
             setAutoRefreshInterval(null);
             console.log('⏹️ Stopped auto-refresh');
         }
@@ -226,6 +265,16 @@ export default function DirectConsultationScreen() {
                 }
                 return [...prev, newMessage];
             });
+            
+            // Scroll to bottom sau khi gửi tin nhắn thành công
+            setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+            
+            // Reload messages để đảm bảo đồng bộ
+            if (roomId) {
+                await loadMessages(roomId, false);
+            }
         } catch (error: any) {
             console.error('Error sending message:', error);
             console.error('Error details:', {
