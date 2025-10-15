@@ -4,6 +4,7 @@ import React from 'react';
 import { Alert, Dimensions, Linking, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Card } from 'react-native-paper';
+import GradientBackground from '../components/GradientBackground';
 
 interface ContactInfo {
     icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -117,7 +118,8 @@ export default function ContactScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <GradientBackground>
+            <SafeAreaView style={styles.safeArea}>
             <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
                 <View style={styles.headerNew}>
                     <Text style={styles.headerTitleNew}>Thông tin liên hệ</Text>
@@ -169,13 +171,13 @@ export default function ContactScreen() {
                 </View>
             </ScrollView>
         </SafeAreaView>
+        </GradientBackground>
     );
 }
 
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
     },
     container: {
         flex: 1,

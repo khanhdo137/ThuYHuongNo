@@ -5,6 +5,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Modal, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import GradientBackground from '../components/GradientBackground';
 
 // Interface phù hợp với PetResponseDto từ API
 interface Pet {
@@ -194,7 +195,8 @@ export default function MyPetsScreen() {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <GradientBackground>
+            <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back" size={24} color="#333" />
@@ -578,13 +580,13 @@ export default function MyPetsScreen() {
                 </View>
             </Modal>
         </SafeAreaView>
+        </GradientBackground>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
     },
     header: {
         flexDirection: 'row',

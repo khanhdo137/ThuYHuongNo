@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import GradientBackground from '../components/GradientBackground';
 
 export default function LoginScreen() {
     const navigation = useNavigation();
@@ -57,8 +58,9 @@ export default function LoginScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <View style={styles.container}>
+        <GradientBackground>
+            <SafeAreaView style={styles.safeArea}>
+                <View style={styles.container}>
                 <Text style={styles.title}>Đăng nhập</Text>
                 <Text style={styles.subtitle}>Chào mừng trở lại!</Text>
 
@@ -102,16 +104,17 @@ export default function LoginScreen() {
                 </TouchableOpacity>
             </View>
         </SafeAreaView>
+        </GradientBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: 'white' },
+    safeArea: { flex: 1 },
     container: {
         flex: 1,
         justifyContent: 'center',
         paddingHorizontal: 30,
-        backgroundColor: '#f5f8ff',
+        backgroundColor: 'transparent',
     },
     title: {
         fontSize: 32,

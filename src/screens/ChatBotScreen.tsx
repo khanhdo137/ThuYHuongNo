@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View, Keyboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import geminiService, { fetchAllServicesForPrompt } from '../services/geminiService';
+import GradientBackground from '../components/GradientBackground';
 
 interface Message {
     id: string;
@@ -158,7 +159,8 @@ Câu hỏi của khách hàng: ${userMessage.text}`;
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <GradientBackground>
+            <SafeAreaView style={styles.safeArea}>
             <View style={styles.header}>
                 <TouchableOpacity 
                     style={styles.backButton}
@@ -238,11 +240,12 @@ Câu hỏi của khách hàng: ${userMessage.text}`;
                 </View>
             </View>
         </SafeAreaView>
+        </GradientBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: 'white' },
+    safeArea: { flex: 1 },
     container: { 
         flex: 1,
         position: 'relative'

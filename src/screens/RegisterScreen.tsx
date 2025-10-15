@@ -4,6 +4,7 @@ import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import GradientBackground from '../components/GradientBackground';
 
 export default function RegisterScreen() {
     const navigation = useNavigation();
@@ -72,7 +73,8 @@ export default function RegisterScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <GradientBackground>
+            <SafeAreaView style={styles.safeArea}>
             <ScrollView contentContainerStyle={styles.scrollView}>
                 <View style={styles.container}>
                     <Text style={styles.title}>Tạo tài khoản</Text>
@@ -168,11 +170,12 @@ export default function RegisterScreen() {
                 </View>
             </ScrollView>
         </SafeAreaView>
+        </GradientBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: 'white' },
+    safeArea: { flex: 1 },
     scrollView: {
         flexGrow: 1,
         justifyContent: 'center',
@@ -180,7 +183,7 @@ const styles = StyleSheet.create({
     container: {
         paddingHorizontal: 30,
         paddingVertical: 20,
-        backgroundColor: '#f5f8ff',
+        backgroundColor: 'transparent',
         borderRadius: 16,
         shadowColor: '#28a745',
         shadowOpacity: 0.08,

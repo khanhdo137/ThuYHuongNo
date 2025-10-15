@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Snackbar } from 'react-native-paper';
+import GradientBackground from '../components/GradientBackground';
 
 const MOCK_AVATAR = 'https://randomuser.me/api/portraits/men/32.jpg';
 const MAX_COMMENT = 900;
@@ -114,7 +115,8 @@ export default function ReviewScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <GradientBackground>
+      <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -272,6 +274,7 @@ export default function ReviewScreen() {
         {snackbarMessage}
       </Snackbar>
     </View>
+    </GradientBackground>
   );
 }
 

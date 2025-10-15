@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { ActivityIndicator, Alert, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import GradientBackground from '../components/GradientBackground';
 
 const DEFAULT_AVATAR = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRbnYeK93JiGT6gAIzmbyt14T6JjVDxL5BOXA&s';
 
@@ -238,7 +239,8 @@ export default function ProfileScreen() {
     const handleFieldCancel = () => setEditingField(null);
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <GradientBackground>
+            <SafeAreaView style={styles.safeArea}>
             {isLoggedIn ? <LoggedInView onLogout={handleLogout} user={{
                 ...user,
                 avatar: user.avatar || DEFAULT_AVATAR
@@ -395,6 +397,7 @@ export default function ProfileScreen() {
               </View>
             </Modal>
         </SafeAreaView>
+        </GradientBackground>
     );
 }
 

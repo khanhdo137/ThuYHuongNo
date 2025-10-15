@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Divider, ActivityIndicator as PaperActivityIndicator, Text as PaperText, Surface } from 'react-native-paper';
 import Swiper from 'react-native-swiper';
+import GradientBackground from '../components/GradientBackground';
 
 // --- PAGE_SIZE dùng cho tất cả các content ---
 const PAGE_SIZE = 10;
@@ -340,10 +341,11 @@ export default function HomeScreen() {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
-            <Surface style={{ flex: 1 }}>
-                {/* Banner Swiper */}
-                <View style={{ height: 180 }}>
+        <GradientBackground>
+            <SafeAreaView style={{ flex: 1 }}>
+                <Surface style={{ flex: 1, backgroundColor: 'transparent' }}>
+                    {/* Banner Swiper */}
+                    <View style={{ height: 180 }}>
                     <Swiper autoplay showsPagination dotColor="#eee" activeDotColor="#007bff">
                         {BANNER_IMAGES.map((img, idx) => (
                             <Image
@@ -396,6 +398,7 @@ export default function HomeScreen() {
                 </ScrollView>
             </Surface>
         </SafeAreaView>
+        </GradientBackground>
     );
 }
 

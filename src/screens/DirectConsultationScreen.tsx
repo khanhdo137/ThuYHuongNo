@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../api/client';
 import { formatVietnamChatTime } from '../utils/timeUtils';
+import GradientBackground from '../components/GradientBackground';
 
 interface ChatMessage {
     messageId: number;
@@ -191,7 +192,7 @@ export default function DirectConsultationScreen() {
             }
         }, 3000); // Check every 3 seconds
         
-        setAutoRefreshInterval(interval);
+        setAutoRefreshInterval(interval as any);
     };
 
     const stopAutoRefresh = () => {
@@ -290,17 +291,20 @@ export default function DirectConsultationScreen() {
 
     if (isLoading) {
         return (
-            <SafeAreaView style={styles.safeArea}>
+            <GradientBackground>
+                <SafeAreaView style={styles.safeArea}>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#007bff" />
                     <Text style={styles.loadingText}>Đang kết nối với hệ thống tư vấn...</Text>
                 </View>
             </SafeAreaView>
+            </GradientBackground>
         );
     }
 
     return (
-        <SafeAreaView style={styles.safeArea}>
+        <GradientBackground>
+            <SafeAreaView style={styles.safeArea}>
             <View style={styles.header}>
                 <TouchableOpacity 
                     style={styles.backButton}
@@ -414,11 +418,12 @@ export default function DirectConsultationScreen() {
                 )}
             </KeyboardAvoidingView>
         </SafeAreaView>
+        </GradientBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: 'white' },
+    safeArea: { flex: 1 },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
