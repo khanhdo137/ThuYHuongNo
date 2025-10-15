@@ -10,6 +10,7 @@ import ServiceDetailScreen from '@/screens/ServiceDetailScreen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
 import AppointmentDetailScreen from '../screens/AppointmentDetailScreen';
+import DirectConsultationScreen from '../screens/DirectConsultationScreen';
 import ReviewScreen from '../screens/ReviewScreen';
 import TabNavigator from './TabNavigator';
 
@@ -20,6 +21,7 @@ export default function AppNavigator() {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Main" component={TabNavigator} />
             <Stack.Screen name="ChatBot" component={ChatBotScreen} />
+            <Stack.Screen name="DirectConsultation" component={DirectConsultationScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="MyPets" component={MyPetsScreen} />

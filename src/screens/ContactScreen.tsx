@@ -60,6 +60,7 @@ const handlePress = async (type: 'map' | 'email' | 'tel', value: string) => {
     }
 };
 
+
 const ContactInfoRow = ({ item }: { item: ContactInfo }) => (
     <Card style={styles.card} elevation={3}>
         <View style={styles.infoRowNew}>
@@ -111,6 +112,10 @@ const MapSection = () => (
 export default function ContactScreen() {
     const navigation = useNavigation();
 
+    const handleDirectConsultation = () => {
+        navigation.navigate('DirectConsultation' as never);
+    };
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
@@ -129,6 +134,16 @@ export default function ContactScreen() {
                     
                     <View style={styles.chatSectionNew}>
                         <Text style={styles.chatSectionTitleNew}>Hỗ trợ trực tuyến</Text>
+                        
+                        {/* Nút tư vấn trực tiếp - nổi bật nhất */}
+                        <TouchableOpacity
+                            style={[styles.chatButtonNew, styles.directConsultationButtonNew]}
+                            onPress={handleDirectConsultation}
+                        >
+                            <Ionicons name="call-outline" size={28} color="white" />
+                            <Text style={styles.directConsultationTextNew}>Tư vấn trực tiếp với bác sĩ</Text>
+                        </TouchableOpacity>
+                        
                         <TouchableOpacity
                             style={[styles.chatButtonNew, styles.messengerButtonNew]}
                             onPress={() => Linking.openURL('https://m.me/thuybinhduonghuongno')}
@@ -321,5 +336,20 @@ const styles = StyleSheet.create({
     },
     chatbotButtonNew: {
         backgroundColor: '#4f8cff', // Màu giống Gemini (xanh tím)
+    },
+    directConsultationButtonNew: {
+        backgroundColor: '#28a745', // Màu xanh lá cây nổi bật
+        borderWidth: 2,
+        borderColor: '#20c997',
+        shadowColor: '#28a745',
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 6,
+    },
+    directConsultationTextNew: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginLeft: 12,
     },
 }); 

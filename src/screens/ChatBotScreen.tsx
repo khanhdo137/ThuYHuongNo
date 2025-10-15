@@ -194,27 +194,47 @@ Câu hỏi của khách hàng: ${userMessage.text}`;
                     styles.inputContainer,
                     { marginBottom: keyboardHeight > 0 ? 0 : 0 }
                 ]}>
-                    <TextInput
-                        style={styles.input}
-                        value={inputText}
-                        onChangeText={setInputText}
-                        placeholder="Nhập tin nhắn..."
-                        placeholderTextColor="#999"
-                        multiline
-                        maxLength={500}
-                        editable={!isLoading}
-                    />
-                    <TouchableOpacity 
-                        style={[styles.sendButton, (isLoading || !inputText.trim()) && styles.sendButtonDisabled]} 
-                        onPress={handleSend}
-                        disabled={isLoading || !inputText.trim()}
-                    >
-                        {isLoading ? (
-                            <ActivityIndicator size="small" color="white" />
-                        ) : (
-                            <Ionicons name="send" size={24} color="white" />
+                    {/* Thông tin hiển thị */}
+                    <View style={styles.infoDisplay}>
+                        <View style={styles.infoItem}>
+                            <Ionicons name="information-circle-outline" size={16} color="#007bff" />
+                            <Text style={styles.infoText}>
+                                Chatbot AI có thể tư vấn về dịch vụ, lịch làm việc và chăm sóc thú cưng
+                            </Text>
+                        </View>
+                        {!apiKeyConfigured && (
+                            <View style={styles.warningItem}>
+                                <Ionicons name="warning-outline" size={16} color="#FF6B6B" />
+                                <Text style={styles.warningText}>
+                                    Cần cấu hình API key để sử dụng đầy đủ tính năng
+                                </Text>
+                            </View>
                         )}
-                    </TouchableOpacity>
+                    </View>
+                    
+                    <View style={styles.inputRow}>
+                        <TextInput
+                            style={styles.input}
+                            value={inputText}
+                            onChangeText={setInputText}
+                            placeholder="Nhập tin nhắn..."
+                            placeholderTextColor="#999"
+                            multiline
+                            maxLength={500}
+                            editable={!isLoading}
+                        />
+                        <TouchableOpacity 
+                            style={[styles.sendButton, (isLoading || !inputText.trim()) && styles.sendButtonDisabled]} 
+                            onPress={handleSend}
+                            disabled={isLoading || !inputText.trim()}
+                        >
+                            {isLoading ? (
+                                <ActivityIndicator size="small" color="white" />
+                            ) : (
+                                <Ionicons name="send" size={24} color="white" />
+                            )}
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         </SafeAreaView>
@@ -300,8 +320,6 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
     },
     inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
         padding: 10,
         borderTopWidth: 1,
         borderTopColor: '#f0f0f0',
@@ -311,6 +329,38 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         zIndex: 5,
+    },
+    infoDisplay: {
+        marginBottom: 10,
+    },
+    infoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 5,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: '#f0f8ff',
+        borderRadius: 8,
+    },
+    infoText: {
+        fontSize: 12,
+        color: '#007bff',
+        marginLeft: 6,
+        flex: 1,
+    },
+    warningItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: '#FFE8E8',
+        borderRadius: 8,
+    },
+    warningText: {
+        fontSize: 12,
+        color: '#FF6B6B',
+        marginLeft: 6,
+        flex: 1,
     },
     input: {
         flex: 1,
@@ -323,6 +373,10 @@ const styles = StyleSheet.create({
         marginRight: 10,
         fontSize: 16,
         textAlignVertical: 'top',
+    },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
     },
     sendButton: {
         width: 40,

@@ -27,8 +27,16 @@ export default function NotificationScreen() {
       .then(res => {
         const all: Appointment[] = res.data.appointments || res.data || [];
         const filtered = all.filter((item: Appointment) => item.status === 1 || item.status === 3);
-        setAppointments(filtered);
-        setCount(filtered.length);
+        
+        // Sắp xếp theo thời gian gần nhất lên trên
+        const sorted = filtered.sort((a, b) => {
+          const dateA = new Date(`${a.appointmentDate} ${a.appointmentTime}`);
+          const dateB = new Date(`${b.appointmentDate} ${b.appointmentTime}`);
+          return dateB.getTime() - dateA.getTime(); // Giảm dần (gần nhất lên trên)
+        });
+        
+        setAppointments(sorted);
+        setCount(sorted.length);
       })
       .catch(() => {
         setAppointments([]);
