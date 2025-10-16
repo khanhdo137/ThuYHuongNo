@@ -46,84 +46,242 @@ const LoggedInView = ({ onLogout, user, onEdit, onOpenChangePwdModal }: { onLogo
     const toggleDarkMode = () => setIsDarkMode(previousState => !previousState);
     const navigation = useNavigation();
     const nav: any = navigation;
-    const [notificationCount, setNotificationCount] = React.useState(0);
+    
+    // States for real data
+    const [stats, setStats] = React.useState({
+        petsCount: 0,
+        appointmentsCount: 0,
+        reviewsCount: 0
+    });
+    const [appointmentStats, setAppointmentStats] = React.useState({
+        pending: 0,
+        confirmed: 0,
+        completed: 0
+    });
+    const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
-        // Lấy số lượng lịch đã duyệt (status = 1)
-        apiClient.get('/Appointment', { params: { status: 1, limit: 100, page: 1 } })
-            .then(res => {
-                const all = res.data.appointments || res.data || [];
-                // Đếm đúng số lịch có status === 1
-                const count = all.filter((item: any) => item.status === 1).length;
-                setNotificationCount(count);
-            })
-            .catch(() => setNotificationCount(0));
+        const fetchUserStats = async () => {
+            try {
+                const token = await AsyncStorage.getItem('token');
+                if (!token) {
+                    setLoading(false);
+                    return;
+                }
+                
+                // Fetch all data in parallel
+                const [petsRes, appointmentsRes, reviewsRes] = await Promise.all([
+                    apiClient.get('/Pet').catch(() => ({ data: [] })),
+                    apiClient.get('/Appointment?limit=100').catch(() => ({ data: { appointments: [] } })),
+                    apiClient.get('/Review?limit=100').catch(() => ({ data: [] }))
+                ]);
+
+                // Process pets data
+                const pets = petsRes.data || [];
+                const petsCount = Array.isArray(pets) ? pets.length : 0;
+
+                // Process appointments data
+                const appointments = appointmentsRes.data.appointments || appointmentsRes.data || [];
+                const appointmentsCount = Array.isArray(appointments) ? appointments.length : 0;
+                
+                // Calculate appointment status counts
+                const appointmentStats = {
+                    pending: appointments.filter((item: any) => item.status === 0).length,
+                    confirmed: appointments.filter((item: any) => item.status === 1).length,
+                    completed: appointments.filter((item: any) => item.status === 2).length
+                };
+
+                // Process reviews data
+                const reviews = reviewsRes.data || [];
+                const reviewsCount = Array.isArray(reviews) ? reviews.length : 0;
+
+                setStats({
+                    petsCount,
+                    appointmentsCount,
+                    reviewsCount
+                });
+                
+                setAppointmentStats(appointmentStats);
+                
+            } catch (error: any) {
+                console.error('Error fetching user stats:', error);
+                // Keep default values (0)
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        fetchUserStats();
     }, []);
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            {/* 1. User Info */}
+        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+            {/* 1. Enhanced User Info Section */}
             <View style={styles.userInfoSection}>
-                <Image source={{ uri: user.avatar || DEFAULT_AVATAR }} style={styles.avatar} />
+                <View style={styles.avatarContainer}>
+                    <Image source={{ uri: user.avatar || DEFAULT_AVATAR }} style={styles.avatar} />
+                    <TouchableOpacity style={styles.editAvatarButton}>
+                        <Ionicons name="camera" size={16} color="white" />
+                    </TouchableOpacity>
+                </View>
                 <Text style={styles.userName}>{user.customerName || user.name}</Text>
+                <Text style={styles.userEmail}>{user.email}</Text>
+                
+                {/* Quick Stats */}
+                <View style={styles.quickStats}>
+                    <View style={styles.statItem}>
+                        <Text style={styles.statNumber}>
+                            {loading ? '...' : stats.petsCount}
+                        </Text>
+                        <Text style={styles.statLabel}>Thú cưng</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                        <Text style={styles.statNumber}>
+                            {loading ? '...' : stats.appointmentsCount}
+                        </Text>
+                        <Text style={styles.statLabel}>Lịch hẹn</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                        <Text style={styles.statNumber}>
+                            {loading ? '...' : stats.reviewsCount}
+                        </Text>
+                        <Text style={styles.statLabel}>Đánh giá</Text>
+                    </View>
+                </View>
             </View>
-            {/* Dòng chức năng thông báo */}
-            {/* 2. Personal Functions */}
-            <Section>
-                <MenuItem icon="person-outline" text="Chỉnh sửa thông tin cá nhân" onPress={onEdit} />
+
+            {/* 2. Quick Actions - Vertical Layout */}
+            <Section title="Thao tác nhanh">
+                <TouchableOpacity style={styles.quickActionRow} onPress={() => nav.navigate('MyPets' as never)}>
+                    <View style={[styles.quickActionIconRow, { backgroundColor: '#FF6B9D' }]}>
+                        <Ionicons name="paw" size={22} color="white" />
+                    </View>
+                    <View style={styles.quickActionContent}>
+                        <Text style={styles.quickActionTitle}>Quản lý thú cưng</Text>
+                        <Text style={styles.quickActionSubtitle}>Xem và quản lý thông tin thú cưng</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.quickActionRow} onPress={() => nav.navigate('MyAppointments' as never)}>
+                    <View style={[styles.quickActionIconRow, { backgroundColor: '#4ECDC4' }]}>
+                        <Ionicons name="calendar" size={22} color="white" />
+                    </View>
+                    <View style={styles.quickActionContent}>
+                        <Text style={styles.quickActionTitle}>Lịch hẹn của tôi</Text>
+                        <Text style={styles.quickActionSubtitle}>Xem lịch sử và trạng thái đặt lịch</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.quickActionRow} onPress={() => nav.navigate('Review' as never)}>
+                    <View style={[styles.quickActionIconRow, { backgroundColor: '#FFC107' }]}>
+                        <Ionicons name="star" size={22} color="white" />
+                    </View>
+                    <View style={styles.quickActionContent}>
+                        <Text style={styles.quickActionTitle}>Đánh giá dịch vụ</Text>
+                        <Text style={styles.quickActionSubtitle}>Đánh giá và phản hồi về dịch vụ</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.quickActionRow} onPress={() => nav.navigate('ChatBot' as never)}>
+                    <View style={[styles.quickActionIconRow, { backgroundColor: '#45B7D1' }]}>
+                        <Ionicons name="chatbubble" size={22} color="white" />
+                    </View>
+                    <View style={styles.quickActionContent}>
+                        <Text style={styles.quickActionTitle}>Chat AI tư vấn</Text>
+                        <Text style={styles.quickActionSubtitle}>Hỏi đáp với AI về chăm sóc thú cưng</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.quickActionRow} onPress={() => nav.navigate('DirectConsultation' as never)}>
+                    <View style={[styles.quickActionIconRow, { backgroundColor: '#96CEB4' }]}>
+                        <Ionicons name="medical" size={22} color="white" />
+                    </View>
+                    <View style={styles.quickActionContent}>
+                        <Text style={styles.quickActionTitle}>Tư vấn trực tiếp</Text>
+                        <Text style={styles.quickActionSubtitle}>Chat trực tiếp với bác sĩ</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                </TouchableOpacity>
+            </Section>
+            
+            {/* 3. Appointment Status Cards - Horizontal Layout */}
+            <View style={styles.appointmentSection}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Trạng thái lịch hẹn</Text>
+                    <TouchableOpacity onPress={() => nav.navigate('MyAppointments' as never)}>
+                        <Text style={styles.viewAllText}>Xem tất cả →</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.appointmentCards}>
+                    <TouchableOpacity style={[styles.appointmentCard, styles.pendingCard]} onPress={() => nav.navigate('MyAppointments' as any, { filter: 0 })}>
+                        <View style={styles.cardIconContainer}>
+                            <Ionicons name="time-outline" size={24} color="#F39C12" />
+                        </View>
+                        <Text style={styles.cardTitle}>Chờ duyệt</Text>
+                        <Text style={styles.cardCount}>
+                            {loading ? '...' : appointmentStats.pending}
+                        </Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={[styles.appointmentCard, styles.confirmedCard]} onPress={() => nav.navigate('MyAppointments' as any, { filter: 1 })}>
+                        <View style={styles.cardIconContainer}>
+                            <Ionicons name="checkmark-circle-outline" size={24} color="#27AE60" />
+                        </View>
+                        <Text style={styles.cardTitle}>Đã duyệt</Text>
+                        <Text style={styles.cardCount}>
+                            {loading ? '...' : appointmentStats.confirmed}
+                        </Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={[styles.appointmentCard, styles.completedCard]} onPress={() => nav.navigate('MyAppointments' as any, { filter: 2 })}>
+                        <View style={styles.cardIconContainer}>
+                            <Ionicons name="ribbon-outline" size={24} color="#3498DB" />
+                        </View>
+                        <Text style={styles.cardTitle}>Hoàn thành</Text>
+                        <Text style={styles.cardCount}>
+                            {loading ? '...' : appointmentStats.completed}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            {/* 4. Settings */}
+            <Section title="Cài đặt">
+                <MenuItem 
+                    icon="person-outline" 
+                    text="Chỉnh sửa thông tin cá nhân" 
+                    onPress={onEdit}
+                    rightContent={<View style={styles.menuBadge}><Text style={styles.badgeText}>!</Text></View>}
+                />
                 <MenuItem icon="lock-closed-outline" text="Đổi mật khẩu" onPress={onOpenChangePwdModal} />
                 <MenuItem
                     icon="moon-outline"
                     text="Chế độ tối"
                     onPress={() => {}}
-                    rightContent={<Switch value={isDarkMode} onValueChange={toggleDarkMode} />}
+                    rightContent={<Switch value={isDarkMode} onValueChange={toggleDarkMode} trackColor={{false: '#E0E0E0', true: '#007bff'}} thumbColor={isDarkMode ? '#ffffff' : '#f4f3f4'} />}
                 />
             </Section>
 
-            {/* My Pets Section */}
-            <Section>
-                <MenuItem icon="paw-outline" text="Thú cưng của tôi" onPress={() => nav.navigate('MyPets' as never)} />
-            </Section>
-            
-            {/* Lịch đã đặt Section */}
-            <View style={styles.sectionContainer}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 18, marginTop: 10 }}>
-                    <Text style={styles.sectionTitle}>Lịch đã đặt</Text>
-                    <TouchableOpacity onPress={() => nav.navigate('MyAppointments' as never)}>
-                        <Text style={{ color: '#007bff', fontWeight: 'bold', fontSize: 15 }}>Xem lịch sử đặt lịch {'>'}</Text>
-                    </TouchableOpacity>
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 18 }}>
-                    <TouchableOpacity style={styles.orderStatusItem} onPress={() => nav.navigate('MyAppointments' as any, { filter: 0 })}>
-                        <Ionicons name="document-text-outline" size={32} color="#0D47A1" />
-                        <Text style={styles.orderStatusText}>Chờ duyệt</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.orderStatusItem} onPress={() => nav.navigate('MyAppointments' as any, { filter: 1 })}>
-                        <Ionicons name="checkmark-done-outline" size={32} color="#42A5F5" />
-                        <Text style={styles.orderStatusText}>Đã duyệt</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.orderStatusItem} onPress={() => nav.navigate('MyAppointments' as any, { filter: 2 })}>
-                        <Ionicons name="ribbon-outline" size={32} color="#27ae60" />
-                        <Text style={styles.orderStatusText}>Hoàn thành</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.orderStatusItem} onPress={() => nav.navigate('Review' as any)}>
-                        <Ionicons name="star-outline" size={32} color="#FFC107" />
-                        <Text style={styles.orderStatusText}>Đánh giá</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            {/* 4. Support & Info */}
-            <Section>
+            {/* 5. Support & Info */}
+            <Section title="Hỗ trợ & Thông tin">
                 <MenuItem icon="call-outline" text="Liên hệ hỗ trợ" onPress={() => {}} />
                 <MenuItem icon="document-text-outline" text="Điều khoản sử dụng" onPress={() => {}} />
                 <MenuItem icon="shield-checkmark-outline" text="Chính sách bảo mật" onPress={() => {}} />
+                <MenuItem icon="chatbubble-ellipses-outline" text="Gửi phản hồi" onPress={() => {}} />
             </Section>
 
-            {/* 5. Others */}
+            {/* 6. Logout */}
             <Section>
-                <MenuItem icon="chatbubble-ellipses-outline" text="Gửi phản hồi / Báo lỗi" onPress={() => {}} />
-                <MenuItem icon="log-out-outline" text="Đăng xuất" onPress={onLogout} />
+                <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
+                    <Ionicons name="log-out-outline" size={24} color="#FF6B6B" />
+                    <Text style={styles.logoutText}>Đăng xuất</Text>
+                </TouchableOpacity>
             </Section>
         </ScrollView>
     );
@@ -133,15 +291,41 @@ const GuestView = () => {
     const navigation = useNavigation();
     return (
         <View style={styles.guestContainer}>
-            <Ionicons name="person-circle-outline" size={120} color="#ccc" />
-            <Text style={styles.guestTitle}>Vui lòng đăng nhập</Text>
-            <Text style={styles.guestSubtitle}>Để trải nghiệm đầy đủ các tính năng của ứng dụng</Text>
-            <TouchableOpacity style={styles.authButton} onPress={() => navigation.navigate('Login' as never)}>
-                <Text style={styles.authButtonText}>Đăng nhập</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
-                <Text style={styles.switchAuthText}>Chưa có tài khoản? <Text style={{fontWeight: 'bold'}}>Đăng ký</Text></Text>
-            </TouchableOpacity>
+            <View style={styles.guestIconContainer}>
+                <Ionicons name="person-circle-outline" size={120} color="#007bff" />
+            </View>
+            <Text style={styles.guestTitle}>Chào mừng đến với Thu Y Hương Nở</Text>
+            <Text style={styles.guestSubtitle}>Đăng nhập để trải nghiệm đầy đủ các tính năng chăm sóc thú cưng</Text>
+            
+            <View style={styles.guestActions}>
+                <TouchableOpacity style={styles.primaryAuthButton} onPress={() => navigation.navigate('Login' as never)}>
+                    <Ionicons name="log-in-outline" size={20} color="white" />
+                    <Text style={styles.primaryAuthButtonText}>Đăng nhập</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.secondaryAuthButton} onPress={() => navigation.navigate('Register' as never)}>
+                    <Ionicons name="person-add-outline" size={20} color="#007bff" />
+                    <Text style={styles.secondaryAuthButtonText}>Tạo tài khoản</Text>
+                </TouchableOpacity>
+            </View>
+            
+            <View style={styles.guestFeatures}>
+                <Text style={styles.featuresTitle}>Tính năng nổi bật:</Text>
+                <View style={styles.featuresList}>
+                    <View style={styles.featureItem}>
+                        <Ionicons name="paw" size={16} color="#FF6B9D" />
+                        <Text style={styles.featureText}>Quản lý thú cưng</Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                        <Ionicons name="calendar" size={16} color="#4ECDC4" />
+                        <Text style={styles.featureText}>Đặt lịch hẹn</Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                        <Ionicons name="chatbubble" size={16} color="#45B7D1" />
+                        <Text style={styles.featureText}>Chat AI tư vấn</Text>
+                    </View>
+                </View>
+            </View>
         </View>
     );
 }
@@ -404,7 +588,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f2f2f7',
+        backgroundColor: '#f8f9fa',
     },
     container: {
         paddingBottom: 100,
@@ -425,139 +609,363 @@ const styles = StyleSheet.create({
         color: '#007bff',
         letterSpacing: 1,
     },
+    
+    // Enhanced User Info Section
     userInfoSection: {
         alignItems: 'center',
-        paddingVertical: 28,
+        paddingVertical: 32,
         backgroundColor: 'white',
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-        marginBottom: 8,
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 28,
+        marginBottom: 20,
         shadowColor: '#007bff',
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
+    },
+    avatarContainer: {
+        position: 'relative',
+        marginBottom: 16,
+    },
+    avatar: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        borderWidth: 4,
+        borderColor: '#007bff',
+        backgroundColor: '#e7f3ff',
+    },
+    editAvatarButton: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        backgroundColor: '#007bff',
+        borderRadius: 16,
+        width: 32,
+        height: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: 'white',
+    },
+    userName: {
+        fontSize: 26,
+        fontWeight: '700',
+        color: '#2c3e50',
+        marginBottom: 4,
+    },
+    userEmail: {
+        fontSize: 16,
+        color: '#7f8c8d',
+        marginBottom: 24,
+    },
+    
+    // Quick Stats
+    quickStats: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f8f9fa',
+        borderRadius: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        width: '90%',
+    },
+    statItem: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    statNumber: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#007bff',
+    },
+    statLabel: {
+        fontSize: 12,
+        color: '#7f8c8d',
+        marginTop: 2,
+    },
+    statDivider: {
+        width: 1,
+        height: 30,
+        backgroundColor: '#e0e0e0',
+        marginHorizontal: 16,
+    },
+    
+    // Section Styles
+    sectionContainer: {
+        marginTop: 16,
+        marginHorizontal: 16,
+        borderRadius: 20,
+        backgroundColor: 'white',
+        shadowColor: '#000',
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 3,
+        overflow: 'hidden',
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#2c3e50',
+        paddingHorizontal: 20,
+        marginBottom: 16,
+    },
+    sectionContent: {
+        backgroundColor: 'white',
+    },
+    
+    // Quick Actions Row Layout
+    quickActionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    quickActionIconRow: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    quickActionContent: {
+        flex: 1,
+    },
+    quickActionTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#2c3e50',
+        marginBottom: 2,
+    },
+    quickActionSubtitle: {
+        fontSize: 13,
+        color: '#7f8c8d',
+        lineHeight: 18,
+    },
+    
+    // Appointment Section
+    appointmentSection: {
+        marginHorizontal: 16,
+        marginBottom: 20,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    viewAllText: {
+        color: '#007bff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    appointmentCards: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    appointmentCard: {
+        flex: 1,
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 16,
+        alignItems: 'center',
+        shadowColor: '#000',
         shadowOpacity: 0.08,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 2 },
         elevation: 3,
     },
-    avatar: {
-        width: 110,
-        height: 110,
-        borderRadius: 55,
-        borderWidth: 3,
-        borderColor: '#007bff',
-        backgroundColor: '#e7f3ff',
+    pendingCard: {
+        borderTopWidth: 3,
+        borderTopColor: '#F39C12',
     },
-    userName: {
-        marginTop: 14,
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#007bff',
+    confirmedCard: {
+        borderTopWidth: 3,
+        borderTopColor: '#27AE60',
     },
-    sectionContainer: {
-        marginTop: 16,
-        marginHorizontal: 12,
-        borderRadius: 18,
-        backgroundColor: 'white',
-        shadowColor: '#007bff',
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 2,
-        paddingBottom: 2,
+    completedCard: {
+        borderTopWidth: 3,
+        borderTopColor: '#3498DB',
     },
-    sectionTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        color: '#007bff',
-        paddingHorizontal: 18,
+    cardIconContainer: {
         marginBottom: 8,
-        textTransform: 'uppercase',
-        marginTop: 10,
     },
-    sectionContent: {
-        backgroundColor: 'white',
-        borderTopWidth: 1,
-        borderBottomWidth: 1,
-        borderColor: '#e5e5e5',
-        borderRadius: 12,
+    cardTitle: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#7f8c8d',
+        marginBottom: 4,
     },
+    cardCount: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#2c3e50',
+    },
+    
+    // Menu Items
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 18,
+        paddingVertical: 18,
+        paddingHorizontal: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#e5e5e5',
+        borderBottomColor: '#f0f0f0',
     },
     menuItemIcon: {
-        marginRight: 18,
+        marginRight: 16,
         color: '#007bff',
+        width: 24,
     },
     menuItemText: {
         flex: 1,
-        fontSize: 17,
-        color: '#222',
+        fontSize: 16,
+        color: '#2c3e50',
+        fontWeight: '500',
     },
     menuItemRight: {
         justifyContent: 'center',
         alignItems: 'center',
     },
+    menuBadge: {
+        backgroundColor: '#FF6B6B',
+        borderRadius: 10,
+        width: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 8,
+    },
+    badgeText: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: 'bold',
+    },
+    
+    // Logout Button
+    logoutButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 18,
+        paddingHorizontal: 20,
+        backgroundColor: '#fff5f5',
+        borderRadius: 12,
+        margin: 16,
+        borderWidth: 1,
+        borderColor: '#FFE8E8',
+    },
+    logoutText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FF6B6B',
+        marginLeft: 8,
+    },
+    
+    // Guest View
     guestContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: 24,
         backgroundColor: 'white',
     },
+    guestIconContainer: {
+        marginBottom: 24,
+    },
     guestTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginTop: 20,
-        color: '#007bff',
+        fontSize: 28,
+        fontWeight: '700',
+        color: '#2c3e50',
+        textAlign: 'center',
+        marginBottom: 12,
     },
     guestSubtitle: {
         fontSize: 16,
-        color: '#666',
+        color: '#7f8c8d',
         textAlign: 'center',
-        marginTop: 10,
-        marginBottom: 30,
+        marginBottom: 32,
+        lineHeight: 24,
     },
-    authButton: {
+    guestActions: {
+        width: '100%',
+        marginBottom: 32,
+    },
+    primaryAuthButton: {
         backgroundColor: '#007bff',
-        paddingVertical: 16,
-        paddingHorizontal: 100,
-        borderRadius: 12,
-        marginBottom: 20,
-        shadowColor: '#007bff',
-        shadowOpacity: 0.10,
-        shadowRadius: 4,
-        shadowOffset: { width: 0, height: 2 },
-    },
-    authButtonText: {
-        color: 'white',
-        fontSize: 17,
-        fontWeight: 'bold',
-    },
-    switchAuthText: {
-        fontSize: 15,
-        color: '#555',
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ccc',
-        padding: 12,
-        marginBottom: 12,
-        borderRadius: 8,
-        fontSize: 16,
-    },
-    orderStatusItem: {
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        flex: 1,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 16,
+        marginBottom: 12,
+        shadowColor: '#007bff',
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 6,
     },
-    orderStatusText: {
-        marginTop: 6,
-        fontSize: 14,
-        color: '#222',
-        fontWeight: '500',
+    primaryAuthButtonText: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: '700',
+        marginLeft: 8,
+    },
+    secondaryAuthButton: {
+        backgroundColor: 'white',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 16,
+        borderWidth: 2,
+        borderColor: '#007bff',
+    },
+    secondaryAuthButtonText: {
+        color: '#007bff',
+        fontSize: 18,
+        fontWeight: '700',
+        marginLeft: 8,
+    },
+    guestFeatures: {
+        width: '100%',
+    },
+    featuresTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#2c3e50',
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    featuresList: {
+        gap: 12,
+    },
+    featureItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+    },
+    featureText: {
+        fontSize: 16,
+        color: '#7f8c8d',
+        marginLeft: 12,
+    },
+    
+    // Input styles
+    input: {
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        padding: 16,
+        marginBottom: 16,
+        borderRadius: 12,
+        fontSize: 16,
+        backgroundColor: '#f8f9fa',
     },
 }); 

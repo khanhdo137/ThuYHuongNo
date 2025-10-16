@@ -1,11 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View, Keyboard } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View, Keyboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../api/client';
 import { formatVietnamChatTime } from '../utils/timeUtils';
 import GradientBackground from '../components/GradientBackground';
+import { pickImage, takePhoto, uploadImageToCloudinary } from '../services/cloudinaryService';
 
 interface ChatMessage {
     messageId: number;
@@ -47,6 +48,7 @@ export default function DirectConsultationScreen() {
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const isUnmountedRef = useRef(false);
     const hasUnauthorizedRef = useRef(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     useEffect(() => {
         initializeChat();
@@ -242,6 +244,79 @@ export default function DirectConsultationScreen() {
         }
     };
 
+    const handleSelectImage = async () => {
+        Alert.alert(
+            'Chọn ảnh',
+            'Bạn muốn chọn ảnh từ đâu?',
+            [
+                {
+                    text: 'Thư viện',
+                    onPress: async () => {
+                        const imageUri = await pickImage();
+                        if (imageUri) {
+                            await handleSendImage(imageUri);
+                        }
+                    },
+                },
+                {
+                    text: 'Camera',
+                    onPress: async () => {
+                        const imageUri = await takePhoto();
+                        if (imageUri) {
+                            await handleSendImage(imageUri);
+                        }
+                    },
+                },
+                {
+                    text: 'Hủy',
+                    style: 'cancel',
+                },
+            ]
+        );
+    };
+
+    const handleSendImage = async (imageUri: string) => {
+        if (!roomId || uploadingImage) return;
+
+        setUploadingImage(true);
+        try {
+            // Upload ảnh lên Cloudinary
+            const imageUrl = await uploadImageToCloudinary(imageUri);
+            
+            // Gửi tin nhắn ảnh
+            const response = await apiClient.post('/Chat/message', {
+                roomId: roomId,
+                messageContent: '[Hình ảnh]',
+                messageType: 1, // Image message
+                fileUrl: imageUrl
+            });
+
+            const newMessage = response.data;
+            setMessages(prev => {
+                const exists = prev.some(msg => msg.messageId === newMessage.messageId);
+                if (exists) {
+                    return prev;
+                }
+                return [...prev, newMessage];
+            });
+            
+            // Scroll to bottom
+            setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+            
+            // Reload messages
+            if (roomId) {
+                await loadMessages(roomId, false);
+            }
+        } catch (error: any) {
+            console.error('Error sending image:', error);
+            Alert.alert('Lỗi', 'Không thể gửi ảnh. Vui lòng thử lại.');
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
     const handleSend = async () => {
         if (inputText.trim().length === 0 || !roomId || isSending) return;
 
@@ -324,12 +399,27 @@ export default function DirectConsultationScreen() {
 
     const renderMessage = ({ item }: { item: ChatMessage }) => {
         const isCustomer = item.senderType === 0;
+        const isImageMessage = item.messageType === 1;
+        
         return (
             <View style={[styles.messageRow, isCustomer ? styles.customerMessageRow : styles.adminMessageRow]}>
                 <View style={[styles.messageBubble, isCustomer ? styles.customerMessageBubble : styles.adminMessageBubble]}>
-                    <Text style={[styles.messageText, isCustomer ? styles.customerMessageText : styles.adminMessageText]}>
-                        {item.messageContent}
-                    </Text>
+                    {isImageMessage && item.fileUrl ? (
+                        <View style={styles.imageMessageContainer}>
+                            <Image 
+                                source={{ uri: item.fileUrl }} 
+                                style={styles.messageImage}
+                                resizeMode="cover"
+                            />
+                            <Text style={[styles.messageText, isCustomer ? styles.customerMessageText : styles.adminMessageText]}>
+                                {item.messageContent}
+                            </Text>
+                        </View>
+                    ) : (
+                        <Text style={[styles.messageText, isCustomer ? styles.customerMessageText : styles.adminMessageText]}>
+                            {item.messageContent}
+                        </Text>
+                    )}
                     <Text style={[styles.messageTime, isCustomer ? styles.customerMessageTime : styles.adminMessageTime]}>
                         {formatVietnamChatTime(item.createdAt)}
                     </Text>
@@ -439,6 +529,18 @@ export default function DirectConsultationScreen() {
                         />
                         
                         <View style={styles.inputContainer}>
+                            <TouchableOpacity 
+                                style={styles.imageButton}
+                                onPress={handleSelectImage}
+                                disabled={uploadingImage || !isConnected}
+                            >
+                                {uploadingImage ? (
+                                    <ActivityIndicator size="small" color="#007bff" />
+                                ) : (
+                                    <Ionicons name="camera" size={20} color="#007bff" />
+                                )}
+                            </TouchableOpacity>
+                            
                             <TextInput
                                 style={styles.input}
                                 value={inputText}
@@ -451,6 +553,7 @@ export default function DirectConsultationScreen() {
                                 returnKeyType="send"
                                 onSubmitEditing={handleSend}
                             />
+                            
                             <TouchableOpacity 
                                 style={[styles.sendButton, (isSending || !inputText.trim() || !isConnected) && styles.sendButtonDisabled]} 
                                 onPress={handleSend}
@@ -624,6 +727,15 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         minHeight: 60,
     },
+    imageButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#f0f8ff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
     input: {
         flex: 1,
         minHeight: 40,
@@ -632,7 +744,6 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         paddingHorizontal: 15,
         paddingVertical: 10,
-        marginRight: 10,
         fontSize: 16,
         textAlignVertical: 'top',
         borderWidth: 1,
@@ -648,6 +759,15 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: '#ccc',
+    },
+    imageMessageContainer: {
+        alignItems: 'center',
+    },
+    messageImage: {
+        width: 200,
+        height: 200,
+        borderRadius: 10,
+        marginBottom: 8,
     },
 });
 

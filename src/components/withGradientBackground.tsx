@@ -16,3 +16,4 @@ export function withGradientBackground<P extends object>(
 }
 
 export default withGradientBackground;
+

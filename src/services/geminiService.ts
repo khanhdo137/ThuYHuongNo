@@ -23,6 +23,13 @@ export interface GeminiResponse {
 export interface GeminiRequest {
     message: string;
     model?: string;
+    userContext?: {
+        hasPets: boolean;
+        recentAppointments: any[];
+        preferredServices: string[];
+    };
+    clinicData?: string;
+    userHistory?: string;
 }
 
 class GeminiService {
@@ -98,28 +105,47 @@ class GeminiService {
                 };
             }
 
-            // Xây dựng prompt cho AI (tương tự như trong Python code)
+            // Xây dựng prompt cho AI với context đầy đủ
             const prompt = `
-Bạn là một chatbot tư vấn thú y thông minh và hữu ích. Bạn làm việc tại phòng khám thú y Hương Nở.
+Bạn là Dr. AI - Chatbot tư vấn thú y thông minh của phòng khám Thu Y Hương Nở.
 
-Nhiệm vụ của bạn:
-1. Tư vấn về sức khỏe và chăm sóc thú cưng
-2. Giải đáp các thắc mắc về dịch vụ của phòng khám
-3. Hướng dẫn cách chăm sóc thú cưng hàng ngày
-4. Đưa ra lời khuyên về dinh dưỡng cho thú cưng
-5. Hỗ trợ thông tin về lịch làm việc và đặt lịch hẹn
+THÔNG TIN PHÒNG KHÁM:
+- Địa chỉ: 235 Đ. Phú Lợi, Khu 4, Thủ Dầu Một, Bình Dương
+- Giờ làm việc: 7:00 - 21:00 (Thứ 2 - Chủ nhật)
+- Chuyên khoa: Thú y tổng quát, Phẫu thuật, Xét nghiệm
 
-Nguyên tắc trả lời:
+DỮ LIỆU HIỆN TẠI:
+${request.clinicData || 'Đang tải dữ liệu...'}
+
+CONTEXT NGƯỜI DÙNG:
+${request.userContext ? `
+- Có thú cưng: ${request.userContext.hasPets ? 'Có' : 'Chưa có'}
+- Lịch hẹn gần đây: ${request.userContext.recentAppointments?.length || 0} cuộc hẹn
+- Dịch vụ đã sử dụng: ${request.userContext.preferredServices?.join(', ') || 'Chưa có'}
+` : 'Chưa đăng nhập'}
+
+LỊCH SỬ KHÁCH HÀNG:
+${request.userHistory || 'Chưa có lịch sử'}
+
+NHIỆM VỤ:
+1. Tư vấn chăm sóc thú cưng dựa trên tình huống cụ thể
+2. Giới thiệu dịch vụ phù hợp dựa trên lịch sử
+3. Hướng dẫn đặt lịch hẹn
+4. Trả lời câu hỏi y tế (kèm khuyến cáo khám trực tiếp)
+5. Cung cấp thông tin bác sĩ phù hợp
+6. Đưa ra gợi ý dựa trên lịch sử sử dụng dịch vụ
+
+NGUYÊN TẮC:
 - Luôn thân thiện, chuyên nghiệp
-- Đưa ra thông tin chính xác và hữu ích
-- Nếu không chắc chắn về vấn đề y tế, khuyên chủ thú cưng đến khám trực tiếp
-- Trả lời bằng tiếng Việt
-- Giữ câu trả lời ngắn gọn nhưng đầy đủ thông tin
-- Trả lời bằng văn bản thuần túy, không sử dụng bất kỳ định dạng Markdown nào.
-Câu hỏi của khách hàng: ${request.message}
+- Đưa ra lời khuyên dựa trên dữ liệu thực tế
+- Khuyến cáo khám trực tiếp cho vấn đề nghiêm trọng
+- Gợi ý dịch vụ cụ thể khi phù hợp
+- Trả lời bằng tiếng Việt, ngắn gọn nhưng đầy đủ
+- Sử dụng thông tin lịch sử để đưa ra gợi ý cá nhân hóa
 
-Hãy trả lời một cách hữu ích và chuyên nghiệp:
-            `;
+Câu hỏi: ${request.message}
+
+Trả lời:`;
 
             // Gửi prompt đến API của Google Generative AI
             const chat = model.startChat({
@@ -185,6 +211,95 @@ export async function fetchAllServicesForPrompt(): Promise<string> {
         }).join('\n');
     } catch (error) {
         console.error('Lỗi khi lấy danh sách dịch vụ:', error);
+        return '';
+    }
+}
+
+// Hàm lấy dữ liệu phòng khám đầy đủ cho prompt
+export async function fetchClinicDataForPrompt(): Promise<string> {
+    try {
+        const [servicesRes, doctorsRes, newsRes] = await Promise.all([
+            apiClient.get('/Service'),
+            apiClient.get('/Doctor'), 
+            apiClient.get('/News?limit=5')
+        ]);
+
+        let contextData = '';
+
+        // Services
+        const services = servicesRes.data.data || servicesRes.data;
+        if (services?.length > 0) {
+            contextData += 'DỊCH VỤ CỦA PHÒNG KHÁM:\n';
+            contextData += services.map((s: any, idx: number) => {
+                let line = `${idx + 1}. ${s.name || s.displayText || 'Dịch vụ'}: ${s.description || ''}`;
+                if (s.priceText) line += ` (Giá: ${s.priceText})`;
+                if (s.durationText) line += ` (Thời lượng: ${s.durationText})`;
+                return line;
+            }).join('\n') + '\n\n';
+        }
+
+        // Doctors
+        const doctors = doctorsRes.data;
+        if (doctors?.length > 0) {
+            contextData += 'BÁC SĨ CỦA PHÒNG KHÁM:\n';
+            contextData += doctors.map((d: any, idx: number) => 
+                `${idx + 1}. ${d.fullName}: ${d.specialization || 'Thú y tổng quát'} - ${d.branch || 'Chi nhánh chính'}`
+            ).join('\n') + '\n\n';
+        }
+
+        // Recent News
+        const news = newsRes.data.news || newsRes.data;
+        if (news?.length > 0) {
+            contextData += 'TIN TỨC GẦN ĐÂY:\n';
+            contextData += news.slice(0, 3).map((n: any, idx: number) => 
+                `${idx + 1}. ${n.title}: ${n.content?.substring(0, 100)}...`
+            ).join('\n') + '\n\n';
+        }
+
+        return contextData;
+    } catch (error) {
+        console.error('Lỗi khi lấy dữ liệu phòng khám:', error);
+        return '';
+    }
+}
+
+// Hàm lấy lịch sử dịch vụ của user
+export async function fetchUserServiceHistory(): Promise<string> {
+    try {
+        const token = await import('@react-native-async-storage/async-storage').then(m => m.default.getItem('token'));
+        if (!token) return '';
+
+        const [appointmentsRes, petsRes] = await Promise.all([
+            apiClient.get('/Appointment?limit=10'),
+            apiClient.get('/Pet')
+        ]);
+
+        let historyData = '';
+
+        // Pet info
+        const pets = petsRes.data;
+        if (pets?.length > 0) {
+            historyData += 'THÚ CƯNG CỦA KHÁCH HÀNG:\n';
+            historyData += pets.map((p: any, idx: number) => 
+                `${idx + 1}. ${p.name} (${p.species || 'Không xác định'}) - ${p.age ? `${p.age} tuổi` : 'Tuổi chưa xác định'}`
+            ).join('\n') + '\n\n';
+        }
+
+        // Appointment history
+        const appointments = appointmentsRes.data.appointments || appointmentsRes.data;
+        if (appointments?.length > 0) {
+            historyData += 'LỊCH SỬ SỬ DỤNG DỊCH VỤ:\n';
+            historyData += appointments.map((a: any, idx: number) => {
+                const statusText = a.status === 0 ? 'Chờ xác nhận' : 
+                                 a.status === 1 ? 'Đã xác nhận' : 
+                                 a.status === 2 ? 'Hoàn thành' : 'Đã hủy';
+                return `${idx + 1}. ${a.serviceName || 'Dịch vụ'} cho ${a.petName || 'thú cưng'} - ${a.appointmentDate} (${statusText})`;
+            }).join('\n') + '\n\n';
+        }
+
+        return historyData;
+    } catch (error) {
+        console.error('Lỗi khi lấy lịch sử user:', error);
         return '';
     }
 }

@@ -6,3 +6,4 @@ export { NotificationCountProvider, useNotificationCount } from './NotificationC
 
 // Export types
 export type { ThemeMode } from './ThemeContext';
+

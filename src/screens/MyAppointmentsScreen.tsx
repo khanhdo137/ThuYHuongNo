@@ -1,7 +1,10 @@
 import apiClient from '@/api/client';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import GradientBackground from '../components/GradientBackground';
 
 interface Appointment {
   appointmentId: number;
@@ -29,11 +32,21 @@ function sortAppointments(list: Appointment[]): Appointment[] {
 
 const getStatusColor = (status: number) => {
   switch (status) {
-    case 0: return '#f1c40f'; // Chờ xác nhận
-    case 1: return '#27ae60'; // Đã duyệt
-    case 2: return '#2980b9'; // Đã hoàn thành
-    case 3: return '#e74c3c'; // Đã hủy
-    default: return '#888';
+    case 0: return '#F39C12'; // Chờ duyệt
+    case 1: return '#27AE60'; // Đã duyệt
+    case 2: return '#3498DB'; // Đã hoàn thành
+    case 3: return '#E74C3C'; // Đã hủy
+    default: return '#95A5A6';
+  }
+};
+
+const getStatusIcon = (status: number) => {
+  switch (status) {
+    case 0: return 'time-outline';
+    case 1: return 'checkmark-circle-outline';
+    case 2: return 'ribbon-outline';
+    case 3: return 'close-circle-outline';
+    default: return 'help-circle-outline';
   }
 };
 
@@ -44,6 +57,16 @@ const getStatusText = (status: number) => {
     case 2: return 'Đã hoàn thành';
     case 3: return 'Đã hủy';
     default: return '';
+  }
+};
+
+const getFilterTitle = (filter: number | undefined) => {
+  switch (filter) {
+    case 0: return 'Lịch hẹn chờ duyệt';
+    case 1: return 'Lịch hẹn đã duyệt';
+    case 2: return 'Lịch hẹn hoàn thành';
+    case 3: return 'Lịch hẹn đã hủy';
+    default: return 'Tất cả lịch hẹn';
   }
 };
 
@@ -59,6 +82,14 @@ export default function MyAppointmentsScreen() {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
+      // Kiểm tra token trước khi gọi API
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        setAllAppointments([]);
+        setAppointments([]);
+        return;
+      }
+      
       const params: any = { page: 1, limit: MAX_FETCH };
       if (typeof filter === 'number') {
         params.status = filter;
@@ -92,88 +123,278 @@ export default function MyAppointmentsScreen() {
     }, 400); // giả lập loading
   };
 
-  return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      {/* Nút quay lại */}
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-        <Text style={{ color: '#007bff', fontWeight: 'bold', fontSize: 16 }}>{'< Quay lại'}</Text>
-      </TouchableOpacity>
-      {loading && (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 40 }}>
-          <ActivityIndicator size="large" color="#007bff" />
-          <Text style={{ marginTop: 10, color: '#007bff' }}>Đang tải dữ liệu...</Text>
+  const renderAppointmentCard = ({ item }: { item: Appointment }) => (
+    <TouchableOpacity 
+      style={styles.appointmentCard}
+      onPress={() => (navigation as any).navigate('AppointmentDetail', { appointmentId: item.appointmentId })}
+    >
+      {/* Status Badge */}
+      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+        <Ionicons name={getStatusIcon(item.status)} size={16} color="white" />
+        <Text style={styles.statusBadgeText}>{getStatusText(item.status)}</Text>
+      </View>
+
+      {/* Main Content */}
+      <View style={styles.cardContent}>
+        {/* Service & Pet Info */}
+        <View style={styles.mainInfo}>
+          <Text style={styles.serviceName}>{item.serviceName}</Text>
+          <View style={styles.petInfo}>
+            <Ionicons name="paw" size={16} color="#FF6B9D" />
+            <Text style={styles.petName}>{item.petName}</Text>
+          </View>
         </View>
-      )}
-      {!loading && !appointments.length && <Text style={{ margin: 20, color: '#888', textAlign: 'center' }}>Bạn chưa có lịch hẹn nào.</Text>}
-      {!loading && !!appointments.length && (
-        <FlatList
-          data={appointments}
-          keyExtractor={(item: Appointment) => item.appointmentId?.toString()}
-          renderItem={({ item }: { item: Appointment }) => (
-            <TouchableOpacity onPress={() => (navigation as any).navigate('AppointmentDetail', { appointmentId: item.appointmentId })}>
-              <View style={[styles.card, { borderLeftWidth: 6, borderLeftColor: getStatusColor(item.status) }]}> 
-                <Text style={styles.title}>{item.serviceName} - {item.petName}</Text>
-                <View style={{ flexDirection: 'row', marginBottom: 4 }}>
-                  <Text style={styles.label}>Ngày: </Text>
-                  <Text>{item.appointmentDate}</Text>
-                  <Text style={styles.label}>   Giờ: </Text>
-                  <Text>{item.appointmentTime}</Text>
-                </View>
-                <Text>
-                  <Text style={styles.label}>Trạng thái: </Text>
-                  <Text style={{ color: getStatusColor(item.status), fontWeight: 'bold' }}>{getStatusText(item.status)}</Text>
-                </Text>
-                <Text>
-                  <Text style={styles.label}>Bác sĩ: </Text>
-                  <Text>{item.doctorName || 'Chưa chỉ định'}</Text>
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.2}
-          ListFooterComponent={loadingMore ? <ActivityIndicator style={{ margin: 16 }} /> : null}
-        />
-      )}
+
+        {/* DateTime Info */}
+        <View style={styles.datetimeInfo}>
+          <View style={styles.datetimeItem}>
+            <Ionicons name="calendar-outline" size={16} color="#3498DB" />
+            <Text style={styles.datetimeText}>{item.appointmentDate}</Text>
+          </View>
+          <View style={styles.datetimeItem}>
+            <Ionicons name="time-outline" size={16} color="#F39C12" />
+            <Text style={styles.datetimeText}>{item.appointmentTime}</Text>
+          </View>
+        </View>
+
+        {/* Doctor Info */}
+        <View style={styles.doctorInfo}>
+          <Ionicons name="person-outline" size={16} color="#27AE60" />
+          <Text style={styles.doctorText}>{item.doctorName || 'Chưa chỉ định'}</Text>
+        </View>
+      </View>
+
+      {/* Arrow */}
+      <View style={styles.arrowContainer}>
+        <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Ionicons name="calendar-outline" size={64} color="#BDC3C7" />
+      <Text style={styles.emptyTitle}>Chưa có lịch hẹn</Text>
+      <Text style={styles.emptySubtitle}>
+        {filter !== undefined 
+          ? `Bạn chưa có lịch hẹn nào với trạng thái "${getStatusText(filter)}"`
+          : 'Bạn chưa có lịch hẹn nào. Hãy đặt lịch hẹn để chăm sóc thú cưng!'
+        }
+      </Text>
     </View>
+  );
+
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color="#2c3e50" />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>{getFilterTitle(filter)}</Text>
+      <View style={styles.headerRight} />
+    </View>
+  );
+
+  return (
+    <GradientBackground>
+      <View style={styles.container}>
+        {renderHeader()}
+        
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007bff" />
+            <Text style={styles.loadingText}>Đang tải lịch hẹn...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={appointments}
+            keyExtractor={(item: Appointment) => item.appointmentId?.toString()}
+            renderItem={renderAppointmentCard}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.2}
+            ListEmptyComponent={renderEmptyState}
+            ListFooterComponent={
+              loadingMore ? (
+                <View style={styles.loadingMore}>
+                  <ActivityIndicator size="small" color="#007bff" />
+                  <Text style={styles.loadingMoreText}>Đang tải thêm...</Text>
+                </View>
+              ) : null
+            }
+          />
+        )}
+      </View>
+    </GradientBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  backBtn: {
-    padding: 15,
-    paddingBottom: 0,
+  container: {
+    flex: 1,
   },
+  
+  // Header
   header: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    margin: 18,
-    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2c3e50',
     textAlign: 'center',
-    color: '#007bff',
-    letterSpacing: 1,
-},
-  card: {
-    backgroundColor: '#fff',
-    marginHorizontal: 14,
-    marginVertical: 10,
-    borderRadius: 14,
+    marginHorizontal: 16,
+  },
+  headerRight: {
+    width: 36,
+  },
+  
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
-    elevation: 5,
-    shadowColor: '#007bff',
-    shadowOpacity: 0.10,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#7f8c8d',
+  },
+  loadingMore: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  loadingMoreText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#7f8c8d',
+  },
+  
+  // List
+  listContainer: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  
+  // Appointment Card
+  appointmentCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
-},
-  title: {
-    fontWeight: 'bold',
-    fontSize: 18,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignSelf: 'flex-start',
+    margin: 16,
     marginBottom: 8,
-    color: '#007bff',
-},
-  label: {
+    borderRadius: 12,
+  },
+  statusBadgeText: {
+    color: 'white',
+    fontSize: 12,
     fontWeight: '600',
-    color: '#555',
-    fontSize: 15,
-},
+    marginLeft: 4,
+  },
+  cardContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  mainInfo: {
+    marginBottom: 12,
+  },
+  serviceName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2c3e50',
+    marginBottom: 6,
+  },
+  petInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  petName: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  datetimeInfo: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    gap: 16,
+  },
+  datetimeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  datetimeText: {
+    fontSize: 14,
+    color: '#2c3e50',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  doctorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  doctorText: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  arrowContainer: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    transform: [{ translateY: -10 }],
+  },
+  
+  // Empty State
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2c3e50',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: '#7f8c8d',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
 }); 

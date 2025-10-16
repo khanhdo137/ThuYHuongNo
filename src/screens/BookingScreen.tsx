@@ -35,6 +35,23 @@ const MockPicker = ({ icon, label, selectedValue, onPress }: MockPickerProps) =>
 };
 
 export default function BookingScreen() {
+    // Lấy ngày hiện tại
+    const getCurrentDate = () => {
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2, '0');
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const yyyy = today.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+    };
+    
+    // Lấy giờ hiện tại (làm tròn lên giờ tiếp theo)
+    const getCurrentTime = () => {
+        const now = new Date();
+        const nextHour = new Date(now.getTime() + 60 * 60 * 1000); // +1 giờ
+        const hh = String(nextHour.getHours()).padStart(2, '0');
+        return `${hh}:00`;
+    };
+    
     const initialFormData = {
         phone: '',
         name: '',
@@ -44,8 +61,8 @@ export default function BookingScreen() {
         weight: '',
         age: '',
         vaccines: '', // vắc xin đã tiêm
-        date: '21/06/2025',
-        time: '07:00',
+        date: getCurrentDate(),
+        time: getCurrentTime(),
         doctor: '',
         serviceId: '',
         notes: '',
@@ -251,68 +268,91 @@ export default function BookingScreen() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={{ padding: 0 }}>
-                <Card style={{ margin: 16, borderRadius: 16, elevation: 3 }}>
-                    <Card.Title title="Đặt lịch hẹn" titleStyle={{ fontSize: 24, fontWeight: 'bold', color: '#007bff' }} />
+            <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
+                <Card style={{ margin: 16, borderRadius: 20, elevation: 4, backgroundColor: '#fff' }}>
+                    <Card.Title 
+                        title="🐾 Đặt lịch hẹn" 
+                        titleStyle={{ fontSize: 26, fontWeight: 'bold', color: '#007bff', textAlign: 'center' }} 
+                    />
                     <Card.Content>
-                        <PaperText style={{ color: '#666', marginBottom: 18, textAlign: 'center' }}>
+                        <PaperText style={{ color: '#666', marginBottom: 20, textAlign: 'center', fontSize: 15, lineHeight: 22 }}>
                             Vui lòng điền thông tin bên dưới để đặt lịch hẹn cho thú cưng của bạn.
                         </PaperText>
-                        <Divider style={{ marginBottom: 18 }} />
+                        <Divider style={{ marginBottom: 20, backgroundColor: '#007bff', height: 1 }} />
+                        <PaperText style={{ fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 12, marginTop: 4 }}>
+                            📋 Thông tin khách hàng
+                        </PaperText>
                         <PaperInput
-                            label="Số điện thoại"
+                            label="Số điện thoại *"
                             value={formData.phone}
                             onChangeText={val => handleInputChange('phone', val)}
                             mode="outlined"
                             keyboardType="phone-pad"
-                            style={{ marginBottom: 14 }}
+                            left={<PaperInput.Icon icon="phone" color="#007bff" />}
+                            style={{ marginBottom: 14, backgroundColor: '#f8f9fa' }}
+                            outlineColor="#007bff"
+                            activeOutlineColor="#007bff"
+                            theme={{ colors: { primary: '#007bff' } }}
                         />
                         <PaperInput
-                            label="Họ và Tên"
+                            label="Họ và Tên *"
                             value={formData.name}
                             onChangeText={val => handleInputChange('name', val)}
                             mode="outlined"
-                            style={{ marginBottom: 14 }}
+                            left={<PaperInput.Icon icon="account" color="#007bff" />}
+                            style={{ marginBottom: 16, backgroundColor: '#f8f9fa' }}
+                            outlineColor="#007bff"
+                            activeOutlineColor="#007bff"
+                            theme={{ colors: { primary: '#007bff' } }}
                         />
-                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 0 }}>
+                        
+                        <Divider style={{ marginVertical: 16, backgroundColor: '#e0e0e0' }} />
+                        
+                        <PaperText style={{ fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 12 }}>
+                            🐕 Thông tin thú cưng
+                        </PaperText>
+                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
                             <View style={{ flex: 1 }}>
-                                <PaperText style={{ marginBottom: 6, fontWeight: '600', color: '#007bff' }}>Thú cưng</PaperText>
+                                <PaperText style={{ marginBottom: 8, fontWeight: '600', color: '#555', fontSize: 13 }}>Chọn thú cưng *</PaperText>
                                 <Button
                                     mode="outlined"
                                     onPress={() => openPicker(petOptions, handlePetSelection)}
-                                    style={{ marginBottom: 0, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
-                                    contentStyle={{ justifyContent: 'space-between' }}
+                                    style={{ borderRadius: 12, borderColor: '#007bff', borderWidth: 1.5, backgroundColor: '#f8f9fa', height: 56 }}
+                                    contentStyle={{ justifyContent: 'space-between', height: '100%' }}
                                     icon="paw"
-                                    labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
+                                    labelStyle={{ color: '#007bff', fontWeight: 'bold', fontSize: 13 }}
                                     theme={{ colors: { primary: '#007bff' } }}
                                 >
                                     {formData.petSelection}
                                 </Button>
                             </View>
-                            <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+                            <View style={{ flex: 1 }}>
+                                <PaperText style={{ marginBottom: 8, fontWeight: '600', color: '#555', fontSize: 13 }}>Tên thú cưng *</PaperText>
                                 <PaperInput
-                                    label="Tên thú"
+                                    label=""
+                                    placeholder="Nhập tên thú cưng"
                                     value={formData.petName}
                                     onChangeText={val => handleInputChange('petName', val)}
                                     mode="outlined"
-                                    style={{ marginBottom: 0 }}
+                                    style={{ backgroundColor: '#f8f9fa', borderRadius: 12, height: 56 }}
+                                    outlineStyle={{ borderRadius: 12 }}
                                     outlineColor="#007bff"
                                     activeOutlineColor="#007bff"
-                                    theme={{ colors: { primary: '#007bff' } }}
+                                    theme={{ colors: { primary: '#007bff', roundness: 12 } }}
                                 />
                             </View>
                         </View>
-                        <PaperText style={{ marginBottom: 6, fontWeight: '600' }}>Giống loài</PaperText>
+                        <PaperText style={{ marginBottom: 8, fontWeight: '600', color: '#555', fontSize: 13 }}>Giống loài *</PaperText>
                         <Button
                             mode="outlined"
                             onPress={() => openPicker(speciesOptions, (val) => handleInputChange('species', val))}
-                            style={{ marginBottom: 14, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
-                            contentStyle={{ justifyContent: 'space-between' }}
+                            style={{ marginBottom: 14, borderRadius: 12, borderColor: '#007bff', borderWidth: 1.5, backgroundColor: '#f8f9fa' }}
+                            contentStyle={{ justifyContent: 'space-between', paddingVertical: 6 }}
                             icon="dog"
                             labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
                             theme={{ colors: { primary: '#007bff' } }}
                         >
-                            {formData.species || '-- Giống loài --'}
+                            {formData.species || 'Chọn giống loài'}
                         </Button>
                         <View style={{ flexDirection: 'row', gap: 10 }}>
                             <View style={{ flex: 1 }}>
@@ -322,7 +362,11 @@ export default function BookingScreen() {
                                     onChangeText={val => handleInputChange('weight', val)}
                                     mode="outlined"
                                     keyboardType="numeric"
-                                    style={{ marginBottom: 14 }}
+                                    left={<PaperInput.Icon icon="weight" color="#007bff" />}
+                                    style={{ marginBottom: 14, backgroundColor: '#f8f9fa' }}
+                                    outlineColor="#007bff"
+                                    activeOutlineColor="#007bff"
+                                    theme={{ colors: { primary: '#007bff' } }}
                                 />
                             </View>
                             <View style={{ flex: 1 }}>
@@ -332,27 +376,40 @@ export default function BookingScreen() {
                                     onChangeText={val => handleInputChange('age', val)}
                                     mode="outlined"
                                     keyboardType="numeric"
-                                    style={{ marginBottom: 14 }}
+                                    left={<PaperInput.Icon icon="calendar-clock" color="#007bff" />}
+                                    style={{ marginBottom: 14, backgroundColor: '#f8f9fa' }}
+                                    outlineColor="#007bff"
+                                    activeOutlineColor="#007bff"
+                                    theme={{ colors: { primary: '#007bff' } }}
                                 />
                             </View>
                         </View>
                         <PaperInput
-                            label="Vắc xin đã tiêm trước khi đến phòng khám"
+                            label="Vắc xin đã tiêm"
                             value={formData.vaccines}
                             onChangeText={val => handleInputChange('vaccines', val)}
                             mode="outlined"
-                            placeholder="Liệt kê các loại vắc xin"
-                            style={{ marginBottom: 14 }}
+                            placeholder="Liệt kê các loại vắc xin đã tiêm"
+                            left={<PaperInput.Icon icon="needle" color="#007bff" />}
+                            style={{ marginBottom: 16, backgroundColor: '#f8f9fa' }}
+                            outlineColor="#007bff"
+                            activeOutlineColor="#007bff"
+                            theme={{ colors: { primary: '#007bff' } }}
                             editable={formData.petSelection === 'Mới'}
                         />
-                        <PaperText style={{ marginBottom: 6, fontWeight: '600' }}>Thời gian hẹn</PaperText>
-                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                        
+                        <Divider style={{ marginVertical: 16, backgroundColor: '#e0e0e0' }} />
+                        <PaperText style={{ fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 12 }}>
+                            📅 Thời gian hẹn
+                        </PaperText>
+                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                             <Button
                                 mode="outlined"
                                 onPress={() => setShowDatePicker(true)}
-                                style={{ flex: 1, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
+                                style={{ flex: 1, borderRadius: 12, borderColor: '#007bff', borderWidth: 1.5, backgroundColor: '#f8f9fa' }}
+                                contentStyle={{ paddingVertical: 6 }}
                                 icon="calendar"
-                                labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
+                                labelStyle={{ color: '#007bff', fontWeight: 'bold', fontSize: 13 }}
                                 theme={{ colors: { primary: '#007bff' } }}
                             >
                                 {formData.date || 'Chọn ngày'}
@@ -360,9 +417,10 @@ export default function BookingScreen() {
                             <Button
                                 mode="outlined"
                                 onPress={() => setShowTimePicker(true)}
-                                style={{ flex: 1, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
-                                icon="clock"
-                                labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
+                                style={{ flex: 1, borderRadius: 12, borderColor: '#007bff', borderWidth: 1.5, backgroundColor: '#f8f9fa' }}
+                                contentStyle={{ paddingVertical: 6 }}
+                                icon="clock-outline"
+                                labelStyle={{ color: '#007bff', fontWeight: 'bold', fontSize: 13 }}
                                 theme={{ colors: { primary: '#007bff' } }}
                             >
                                 {formData.time || 'Chọn giờ'}
@@ -375,7 +433,7 @@ export default function BookingScreen() {
                                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                                 onChange={(event, selectedDate) => {
                                     setShowDatePicker(false);
-                                    if (selectedDate) {
+                                    if (selectedDate && event.type === 'set') {
                                         const dd = String(selectedDate.getDate()).padStart(2, '0');
                                         const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
                                         const yyyy = selectedDate.getFullYear();
@@ -387,93 +445,180 @@ export default function BookingScreen() {
                         )}
                         {showTimePicker && (
                             <DateTimePicker
-                                value={formData.time ? new Date(`1970-01-01T${formData.time}`) : new Date()}
+                                value={(() => {
+                                    if (formData.time) {
+                                        const [hours, minutes] = formData.time.split(':');
+                                        const date = new Date();
+                                        date.setHours(parseInt(hours, 10));
+                                        date.setMinutes(parseInt(minutes, 10));
+                                        date.setSeconds(0);
+                                        return date;
+                                    }
+                                    return new Date();
+                                })()}
                                 mode="time"
                                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                is24Hour={true}
                                 onChange={(event, selectedTime) => {
-                                    setShowTimePicker(false);
-                                    if (selectedTime) {
+                                    if (Platform.OS === 'android') {
+                                        setShowTimePicker(false);
+                                    }
+                                    if (selectedTime && event.type === 'set') {
                                         const hh = String(selectedTime.getHours()).padStart(2, '0');
                                         const mm = String(selectedTime.getMinutes()).padStart(2, '0');
                                         handleInputChange('time', `${hh}:${mm}`);
+                                        if (Platform.OS === 'ios') {
+                                            setShowTimePicker(false);
+                                        }
+                                    } else if (event.type === 'dismissed') {
+                                        setShowTimePicker(false);
                                     }
                                 }}
                             />
                         )}
-                        <PaperText style={{ marginBottom: 6, fontWeight: '600' }}>Bác sĩ</PaperText>
-                        <Button
-                            mode="outlined"
-                            onPress={() => openPicker(doctorOptions, (val) => handleInputChange('doctor', val))}
-                            style={{ marginBottom: 14, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
-                            icon="account-heart"
-                            labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
-                            theme={{ colors: { primary: '#007bff' } }}
-                        >
-                            {formData.doctor || '-- Không chọn riêng --'}
-                        </Button>
-                        <PaperText style={{ marginBottom: 6, fontWeight: '600' }}>Dịch vụ</PaperText>
+                        <Divider style={{ marginVertical: 16, backgroundColor: '#e0e0e0' }} />
+                        
+                        <PaperText style={{ fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 12 }}>
+                            👨‍⚕️ Dịch vụ & Bác sĩ
+                        </PaperText>
+                        <PaperText style={{ marginBottom: 8, fontWeight: '600', color: '#555', fontSize: 13 }}>Dịch vụ *</PaperText>
                         <Button
                             mode="outlined"
                             onPress={() => openPicker(serviceOptions.map(opt => opt.label), (val) => {
                                 const selected = serviceOptions.find(opt => opt.label === val);
                                 handleInputChange('serviceId', selected ? selected.value : '');
                             })}
-                            style={{ marginBottom: 14, borderRadius: 10, borderColor: '#007bff', borderWidth: 1 }}
+                            style={{ marginBottom: 14, borderRadius: 12, borderColor: '#007bff', borderWidth: 1.5, backgroundColor: '#f8f9fa' }}
+                            contentStyle={{ paddingVertical: 6 }}
                             icon="medical-bag"
                             labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
                             theme={{ colors: { primary: '#007bff' } }}
                         >
                             {services.find(s => s.serviceId.toString() === formData.serviceId)?.displayText || 'Chọn dịch vụ'}
                         </Button>
+                        <PaperText style={{ marginBottom: 8, fontWeight: '600', color: '#555', fontSize: 13 }}>Bác sĩ (tùy chọn)</PaperText>
+                        <Button
+                            mode="outlined"
+                            onPress={() => openPicker(doctorOptions, (val) => handleInputChange('doctor', val))}
+                            style={{ marginBottom: 14, borderRadius: 12, borderColor: '#007bff', borderWidth: 1.5, backgroundColor: '#f8f9fa' }}
+                            contentStyle={{ paddingVertical: 6 }}
+                            icon="doctor"
+                            labelStyle={{ color: '#007bff', fontWeight: 'bold' }}
+                            theme={{ colors: { primary: '#007bff' } }}
+                        >
+                            {formData.doctor || 'Không chọn riêng'}
+                        </Button>
                         <PaperInput
-                            label="Ghi chú"
+                            label="Ghi chú thêm"
                             value={formData.notes}
                             onChangeText={val => handleInputChange('notes', val)}
                             mode="outlined"
                             multiline
-                            style={{ marginBottom: 18, minHeight: 80, textAlignVertical: 'top' }}
+                            numberOfLines={4}
+                            placeholder="Nhập ghi chú về tình trạng sức khỏe, yêu cầu đặc biệt..."
+                            left={<PaperInput.Icon icon="note-text" color="#007bff" />}
+                            style={{ marginBottom: 20, minHeight: 100, backgroundColor: '#f8f9fa' }}
+                            outlineColor="#007bff"
+                            activeOutlineColor="#007bff"
+                            theme={{ colors: { primary: '#007bff' } }}
                         />
                         <Button
                             mode="contained"
                             onPress={handleSubmit}
                             loading={submitting}
                             disabled={submitting}
-                            style={{ marginTop: 10, borderRadius: 12, paddingVertical: 8, backgroundColor: '#007bff' }}
-                            contentStyle={{ height: 48 }}
-                            labelStyle={{ color: 'white', fontWeight: 'bold' }}
+                            style={{ 
+                                marginTop: 4, 
+                                borderRadius: 14, 
+                                paddingVertical: 6, 
+                                backgroundColor: submitting ? '#ccc' : '#007bff',
+                                elevation: submitting ? 0 : 4,
+                                shadowColor: '#007bff',
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.3,
+                                shadowRadius: 8,
+                            }}
+                            contentStyle={{ height: 52 }}
+                            labelStyle={{ color: 'white', fontWeight: 'bold', fontSize: 17, letterSpacing: 0.5 }}
+                            icon={submitting ? "loading" : "check-circle"}
                             theme={{ colors: { primary: '#007bff' } }}
                         >
-                            {submitting ? 'Đang gửi...' : 'Đặt lịch'}
+                            {submitting ? 'Đang gửi...' : '✓ Đặt lịch ngay'}
                         </Button>
-                        {error && <PaperText style={{ color: '#e74c3c', textAlign: 'center', marginTop: 14, fontWeight: 'bold', fontSize: 16 }}>{error}</PaperText>}
-                        {success && <PaperText style={{ color: '#27ae60', textAlign: 'center', marginTop: 14, fontWeight: 'bold', fontSize: 16 }}>{success}</PaperText>}
+                        {error && (
+                            <View style={{ backgroundColor: '#ffe6e6', padding: 12, borderRadius: 10, marginTop: 14, borderLeftWidth: 4, borderLeftColor: '#e74c3c' }}>
+                                <PaperText style={{ color: '#c0392b', textAlign: 'center', fontWeight: '600', fontSize: 14 }}>
+                                    ❌ {error}
+                                </PaperText>
+                            </View>
+                        )}
+                        {success && (
+                            <View style={{ backgroundColor: '#e6f7ed', padding: 12, borderRadius: 10, marginTop: 14, borderLeftWidth: 4, borderLeftColor: '#27ae60' }}>
+                                <PaperText style={{ color: '#1e8449', textAlign: 'center', fontWeight: '600', fontSize: 14 }}>
+                                    ✓ {success}
+                                </PaperText>
+                            </View>
+                        )}
                     </Card.Content>
                 </Card>
-                {/* Thay Modal chọn picker bằng Dialog của Paper */}
+                {/* Dialog chọn picker */}
                 <Portal>
-                    <Dialog visible={isPickerVisible} onDismiss={() => setPickerVisible(false)} style={{ borderRadius: 20, alignSelf: 'center', width: '80%', maxWidth: 350, borderColor: '#007bff', borderWidth: 1 }}>
-                        <Dialog.Title style={{ color: '#007bff', fontWeight: 'bold', textAlign: 'center' }}>Vui lòng chọn</Dialog.Title>
-                        <Dialog.Content style={{ paddingHorizontal: 0, maxHeight: 320 }}>
-                            <ScrollView>
+                    <Dialog 
+                        visible={isPickerVisible} 
+                        onDismiss={() => setPickerVisible(false)} 
+                        style={{ 
+                            borderRadius: 24, 
+                            alignSelf: 'center', 
+                            width: '85%', 
+                            maxWidth: 400, 
+                            backgroundColor: '#fff',
+                            elevation: 8
+                        }}
+                    >
+                        <Dialog.Title style={{ 
+                            color: '#007bff', 
+                            fontWeight: 'bold', 
+                            textAlign: 'center',
+                            fontSize: 20,
+                            paddingBottom: 8
+                        }}>
+                            📋 Vui lòng chọn
+                        </Dialog.Title>
+                        <Divider style={{ backgroundColor: '#007bff', height: 2 }} />
+                        <Dialog.Content style={{ paddingHorizontal: 8, maxHeight: 400, paddingTop: 12 }}>
+                            <ScrollView showsVerticalScrollIndicator={false}>
                                 <RadioButton.Group
                                     onValueChange={value => { handlePickerSelect(value); }}
                                     value={pickerData.items.includes(formData.petSelection) ? formData.petSelection : ''}
                                 >
-                                    {pickerData.items.map(item => (
+                                    {pickerData.items.map((item, index) => (
                                         <RadioButton.Item
                                             key={item}
                                             label={item}
                                             value={item}
                                             color="#007bff"
-                                            labelStyle={{ fontSize: 16 }}
-                                            style={{ borderRadius: 8, marginBottom: 2, marginHorizontal: 0 }}
+                                            labelStyle={{ fontSize: 15, fontWeight: '500' }}
+                                            style={{ 
+                                                borderRadius: 10, 
+                                                marginBottom: 4, 
+                                                backgroundColor: index % 2 === 0 ? '#f8f9fa' : '#fff',
+                                                paddingVertical: 4
+                                            }}
                                         />
                                     ))}
                                 </RadioButton.Group>
                             </ScrollView>
                         </Dialog.Content>
-                        <Dialog.Actions>
-                            <Button onPress={() => setPickerVisible(false)} labelStyle={{ color: '#007bff', fontWeight: 'bold' }} theme={{ colors: { primary: '#007bff' } }}>Đóng</Button>
+                        <Dialog.Actions style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+                            <Button 
+                                onPress={() => setPickerVisible(false)} 
+                                labelStyle={{ color: '#007bff', fontWeight: 'bold', fontSize: 15 }} 
+                                style={{ borderRadius: 10, paddingHorizontal: 12 }}
+                                mode="outlined"
+                                theme={{ colors: { primary: '#007bff' } }}
+                            >
+                                Đóng
+                            </Button>
                         </Dialog.Actions>
                     </Dialog>
                 </Portal>
@@ -483,7 +628,7 @@ export default function BookingScreen() {
 }
 
 const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#ffffff' },
+    safeArea: { flex: 1, backgroundColor: '#f5f7fa' },
     container: { paddingBottom: 30 },
     header: { padding: 24, alignItems: 'center', backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#eee' },
     headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#007bff', letterSpacing: 1, marginBottom: 4 },

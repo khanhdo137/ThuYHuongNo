@@ -1,5 +1,5 @@
 import { Feather, FontAwesome, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Animated, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Path } from 'react-native-svg';
 import { useNotificationCount } from '../context/NotificationCountContext';
@@ -59,6 +59,12 @@ const TabBackground = ({ width, height }: { width: number; height: number }) => 
 
 const CustomBottomTab = ({ state, navigation }: { state: any; navigation: any }) => {
   const { count } = useNotificationCount();
+
+  // Log để debug
+  useEffect(() => {
+    console.log(`🔔 CustomBottomTab - Notification count: ${count}`);
+  }, [count]);
+
   return (
     <View style={styles.container}>
       {/* SVG Background */}

@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Snackbar } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import GradientBackground from '../components/GradientBackground';
 
 const MOCK_AVATAR = 'https://randomuser.me/api/portraits/men/32.jpg';
@@ -38,6 +39,14 @@ export default function ReviewScreen() {
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Kiểm tra token trước khi gọi API
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        setPending([]);
+        setDone([]);
+        return;
+      }
+      
       const appointmentsRes = await apiClient.get('/Appointment', { params: { status: 2, page: 1, limit: 100 } });
       const appointments = appointmentsRes.data.appointments || [];
       const feedbacksRes = await apiClient.get('/Feedback', { params: { page: 1, limit: 100 } });
@@ -46,7 +55,11 @@ export default function ReviewScreen() {
       const pendingList = appointments.filter((app: any) => !feedbackAppointmentIds.includes(String(app.appointmentId)));
       setPending(pendingList);
       setDone(feedbacks);
-    } catch {
+    } catch (error: any) {
+      // Im lặng lỗi 401
+      if (error?.response?.status !== 401) {
+        console.error('Error fetching review data:', error);
+      }
       setPending([]);
       setDone([]);
     } finally {
