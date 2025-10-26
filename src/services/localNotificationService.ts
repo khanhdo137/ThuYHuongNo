@@ -1,16 +1,26 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import apiClient from '../api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Cấu hình notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// Kiểm tra xem có đang chạy trong Expo Go không
+const isExpoGo = Constants.appOwnership === 'expo';
+
+// Cấu hình notification handler (chỉ khi không phải Expo Go hoặc khi có thể)
+try {
+  if (!isExpoGo) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  }
+} catch (error) {
+  console.warn('⚠️ Notification handler setup skipped (Expo Go mode)');
+}
 
 // Key để lưu trữ thông báo đã xem
 const VIEWED_NOTIFICATIONS_KEY = '@viewed_notifications';
@@ -40,6 +50,12 @@ export async function scheduleLocalNotification(
   data?: any
 ) {
   try {
+    // Skip trong Expo Go
+    if (isExpoGo) {
+      console.warn('⚠️ Notifications not available in Expo Go');
+      return false;
+    }
+    
     console.log('🔔 Creating local notification:', { title, body, data });
     
     // Check permissions first
@@ -65,7 +81,7 @@ export async function scheduleLocalNotification(
     console.log('✅ Local notification created successfully with ID:', notificationId);
     return true;
   } catch (error) {
-    console.error('❌ Error creating local notification:', error);
+    console.warn('⚠️ Notification not available:', error);
     return false;
   }
 }
@@ -283,6 +299,12 @@ export async function clearNotifiedAppointments() {
  */
 export async function requestNotificationPermissions() {
   try {
+    // Skip trong Expo Go
+    if (isExpoGo) {
+      console.warn('⚠️ Notifications not available in Expo Go');
+      return false;
+    }
+    
     console.log('🔐 Checking notification permissions...');
     
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -305,7 +327,7 @@ export async function requestNotificationPermissions() {
     console.log('✅ Notification permissions granted successfully');
     return true;
   } catch (error) {
-    console.error('❌ Error requesting notification permissions:', error);
+    console.warn('⚠️ Notification permissions not available:', error);
     return false;
   }
 }

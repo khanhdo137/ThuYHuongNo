@@ -4,6 +4,7 @@ import { AppState, Platform, StatusBar } from 'react-native';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationCountProvider, useNotificationCount } from './context/NotificationCountContext';
@@ -18,6 +19,9 @@ import {
 } from './services/localNotificationService';
 import apiClient from './api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Kiểm tra xem có đang chạy trong Expo Go không
+const isExpoGo = Constants.appOwnership === 'expo';
 
 // Component to handle theme-based styling
 const ThemedApp = () => {
@@ -83,6 +87,12 @@ const ThemedApp = () => {
     // 🔔 Setup Local Notifications
     const setupLocalNotifications = async () => {
       try {
+        // Skip trong Expo Go
+        if (isExpoGo) {
+          console.warn('⚠️ Notifications not available in Expo Go - use development build for notifications');
+          return;
+        }
+        
         console.log('🔧 Setting up local notifications...');
         
         // Request permissions
@@ -124,7 +134,7 @@ const ThemedApp = () => {
 
         console.log('✅ Local notifications setup completed successfully');
       } catch (error) {
-        console.error('❌ Error setting up local notifications:', error);
+        console.warn('⚠️ Error setting up local notifications:', error);
       }
     };
 

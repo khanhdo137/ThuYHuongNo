@@ -7,7 +7,11 @@ import {
   checkForNewAppointmentNotifications 
 } from '../services/localNotificationService';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Kiểm tra xem có đang chạy trong Expo Go không
+const isExpoGo = Constants.appOwnership === 'expo';
 
 interface NotificationDebugButtonProps {
   style?: any;
@@ -16,17 +20,32 @@ interface NotificationDebugButtonProps {
 export default function NotificationDebugButton({ style }: NotificationDebugButtonProps) {
   const handleDebugPermissions = async () => {
     try {
+      // Check if running in Expo Go
+      if (isExpoGo) {
+        Alert.alert(
+          '⚠️ Expo Go Mode',
+          'Notifications are not available in Expo Go.\n\nTo use notifications:\n1. Create a development build\n2. Or use a standalone build\n\nViewing stored data only.',
+          [{ text: 'OK' }]
+        );
+      }
+      
       console.log('🔍 Debugging notification permissions...');
       
-      // Check current permissions
-      const { status } = await Notifications.getPermissionsAsync();
-      console.log('📋 Current permission status:', status);
+      // Check current permissions (skip in Expo Go)
+      let status = 'unavailable';
+      let hasPermission = false;
       
-      // Request permissions
-      const hasPermission = await requestNotificationPermissions();
-      
-      // Setup channel
-      await setupNotificationChannel();
+      if (!isExpoGo) {
+        const permResult = await Notifications.getPermissionsAsync();
+        status = permResult.status;
+        console.log('📋 Current permission status:', status);
+        
+        // Request permissions
+        hasPermission = await requestNotificationPermissions();
+        
+        // Setup channel
+        await setupNotificationChannel();
+      }
       
       // Check storage
       const viewedStored = await AsyncStorage.getItem('@viewed_notifications');
@@ -37,7 +56,9 @@ export default function NotificationDebugButton({ style }: NotificationDebugButt
       // Show debug info
       Alert.alert(
         '🔍 Debug Info',
-        `Permission: ${status}\nHas Permission: ${hasPermission ? 'Yes' : 'No'}\n\nViewed: ${viewedCount} appointments\nNotified: ${notifiedCount} appointments\n\nCheck console for details.`,
+        isExpoGo 
+          ? `Mode: Expo Go (notifications unavailable)\n\nViewed: ${viewedCount} appointments\nNotified: ${notifiedCount} appointments\n\nUse development build for notifications.`
+          : `Permission: ${status}\nHas Permission: ${hasPermission ? 'Yes' : 'No'}\n\nViewed: ${viewedCount} appointments\nNotified: ${notifiedCount} appointments\n\nCheck console for details.`,
         [{ text: 'OK' }]
       );
       

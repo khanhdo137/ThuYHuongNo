@@ -105,9 +105,19 @@ class GeminiService {
                 };
             }
 
+            // Lấy ngày giờ hiện tại
+            const now = new Date();
+            const dayOfWeek = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'][now.getDay()];
+            const currentDate = `${dayOfWeek}, ngày ${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
+            const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            
             // Xây dựng prompt cho AI với context đầy đủ
             const prompt = `
 Bạn là Dr. AI - Chatbot tư vấn thú y thông minh của phòng khám Thu Y Hương Nở.
+
+THÔNG TIN THỜI GIAN HIỆN TẠI:
+- Ngày: ${currentDate}
+- Giờ: ${currentTime}
 
 THÔNG TIN PHÒNG KHÁM:
 - Địa chỉ: 235 Đ. Phú Lợi, Khu 4, Thủ Dầu Một, Bình Dương
@@ -134,6 +144,7 @@ NHIỆM VỤ:
 4. Trả lời câu hỏi y tế (kèm khuyến cáo khám trực tiếp)
 5. Cung cấp thông tin bác sĩ phù hợp
 6. Đưa ra gợi ý dựa trên lịch sử sử dụng dịch vụ
+7. Trả lời chính xác về lịch hẹn của khách hàng (ngày, giờ, trạng thái)
 
 NGUYÊN TẮC:
 - Luôn thân thiện, chuyên nghiệp
@@ -142,6 +153,10 @@ NGUYÊN TẮC:
 - Gợi ý dịch vụ cụ thể khi phù hợp
 - Trả lời bằng tiếng Việt, ngắn gọn nhưng đầy đủ
 - Sử dụng thông tin lịch sử để đưa ra gợi ý cá nhân hóa
+- Sử dụng THÔNG TIN THỜI GIAN HIỆN TẠI khi trả lời các câu hỏi về ngày giờ, lịch hẹn, hoặc thời gian
+- Khi trả lời về lịch hẹn: LUÔN sử dụng thông tin CHÍNH XÁC từ LỊCH SỬ LỊCH HẸN, bao gồm ngày, giờ cụ thể, bác sĩ, và trạng thái
+- Hiểu rõ trạng thái lịch hẹn: "Chờ xác nhận" = chưa duyệt, "Đã xác nhận" = đã được duyệt, "Hoàn thành" = đã khám xong, "Đã hủy" = không còn hiệu lực
+- So sánh ngày giờ lịch hẹn với THÔNG TIN THỜI GIAN HIỆN TẠI để xác định lịch đã qua, sắp tới, hay đang diễn ra
 
 Câu hỏi: ${request.message}
 
@@ -270,7 +285,7 @@ export async function fetchUserServiceHistory(): Promise<string> {
         if (!token) return '';
 
         const [appointmentsRes, petsRes] = await Promise.all([
-            apiClient.get('/Appointment?limit=10'),
+            apiClient.get('/Appointment?limit=50'), // Tăng lên 50 để AI có đủ thông tin lịch sử
             apiClient.get('/Pet')
         ]);
 
@@ -288,12 +303,35 @@ export async function fetchUserServiceHistory(): Promise<string> {
         // Appointment history
         const appointments = appointmentsRes.data.appointments || appointmentsRes.data;
         if (appointments?.length > 0) {
-            historyData += 'LỊCH SỬ SỬ DỤNG DỊCH VỤ:\n';
+            historyData += 'LỊCH SỬ LỊCH HẸN:\n';
             historyData += appointments.map((a: any, idx: number) => {
                 const statusText = a.status === 0 ? 'Chờ xác nhận' : 
-                                 a.status === 1 ? 'Đã xác nhận' : 
-                                 a.status === 2 ? 'Hoàn thành' : 'Đã hủy';
-                return `${idx + 1}. ${a.serviceName || 'Dịch vụ'} cho ${a.petName || 'thú cưng'} - ${a.appointmentDate} (${statusText})`;
+                                 a.status === 1 ? 'Đã xác nhận (đã được duyệt)' : 
+                                 a.status === 2 ? 'Hoàn thành' : 
+                                 a.status === 3 ? 'Đã hủy' : 'Không rõ';
+                
+                // Format ngày giờ đầy đủ
+                let dateTimeStr = '';
+                if (a.appointmentDate) {
+                    // Chuyển đổi format ngày nếu cần (từ yyyy-MM-dd sang dd/MM/yyyy)
+                    let formattedDate = a.appointmentDate;
+                    if (a.appointmentDate.includes('-')) {
+                        const [yyyy, mm, dd] = a.appointmentDate.split('-');
+                        formattedDate = `${dd}/${mm}/${yyyy}`;
+                    }
+                    dateTimeStr = `Ngày ${formattedDate}`;
+                    if (a.appointmentTime) {
+                        dateTimeStr += ` lúc ${a.appointmentTime}`;
+                    }
+                }
+                
+                // Thông tin bác sĩ
+                const doctorInfo = a.doctorName ? ` - Bác sĩ: ${a.doctorName}` : '';
+                
+                // Ghi chú
+                const notesInfo = a.notes ? ` - Ghi chú: ${a.notes}` : '';
+                
+                return `${idx + 1}. ${a.serviceName || 'Dịch vụ'} cho ${a.petName || 'thú cưng'} - ${dateTimeStr}${doctorInfo} (Trạng thái: ${statusText})${notesInfo}`;
             }).join('\n') + '\n\n';
         }
 
