@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import client from '../api/client';
+import { startNotificationPolling, stopNotificationPolling } from '../services/notificationPollingService';
 
 // Types
 interface User {
@@ -70,6 +71,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             isLoading: false,
             error: null,
           });
+          
+          // Check reminders when app starts
+          try {
+            await client.post('/Reminder/check-my-reminders');
+            console.log('✅ Checked appointment reminders on app start');
+          } catch (reminderError) {
+            console.warn('⚠️ Failed to check reminders:', reminderError);
+          }
+          
+          // Start notification polling if user is authenticated
+          await startNotificationPolling(30000); // Poll every 30 seconds
         } else {
           setAuthState(prev => ({ ...prev, isLoading: false }));
         }
@@ -117,6 +129,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLoading: false,
         error: null,
       });
+      
+      // Check reminders sau khi login
+      try {
+        await client.post('/Reminder/check-my-reminders');
+        console.log('✅ Checked appointment reminders');
+      } catch (reminderError) {
+        console.warn('⚠️ Failed to check reminders:', reminderError);
+      }
+      
+      // Start notification polling after successful login
+      await startNotificationPolling(30000); // Poll every 30 seconds
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Login failed';
       setAuthState(prev => ({
@@ -152,6 +175,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Logout function
   const logout = async () => {
     try {
+      // Stop notification polling
+      stopNotificationPolling();
+      
       // Call logout API if needed
       if (authState.user?.token) {
         try {
