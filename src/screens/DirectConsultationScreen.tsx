@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View, Keyboard } from 'react-native';
+import { ActivityIndicator, Alert, Animated, FlatList, Image, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View, Keyboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../api/client';
@@ -49,6 +49,15 @@ export default function DirectConsultationScreen() {
     const isUnmountedRef = useRef(false);
     const hasUnauthorizedRef = useRef(false);
     const [uploadingImage, setUploadingImage] = useState(false);
+    const [hasMoreMessages, setHasMoreMessages] = useState(false);
+    const [oldestMessageId, setOldestMessageId] = useState<number | null>(null);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const isUserAtBottomRef = useRef(true); // Track xem user có đang ở dưới cùng không
+    const isLoadingMoreRef = useRef(false); // Track xem có đang request load more không
+    const lastLoadMoreTimeRef = useRef(0); // Track thời gian load more cuối cùng
+    const loadingAnimation = useRef(new Animated.Value(0)).current; // Animation cho loading indicator
+    const [showLoadMoreButton, setShowLoadMoreButton] = useState(false); // Hiển thị nút load more
 
     useEffect(() => {
         initializeChat();
@@ -82,13 +91,14 @@ export default function DirectConsultationScreen() {
     }, []);
 
     useEffect(() => {
-        if (messages.length > 0) {
+        // Chỉ auto scroll khi có tin nhắn mới và đã load xong lần đầu VÀ người dùng đang ở dưới cùng
+        if (messages.length > 0 && initialLoadComplete && isUserAtBottomRef.current) {
             // Delay scroll to ensure layout is complete
             setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
+                flatListRef.current?.scrollToEnd({ animated: false });
             }, 100);
         }
-    }, [messages]);
+    }, [messages, initialLoadComplete]);
 
     const initializeChat = async () => {
         try {
@@ -108,8 +118,8 @@ export default function DirectConsultationScreen() {
             setRoomStatus(roomData.status);
             setIsConnected(true);
             
-            // Load existing messages
-            await loadMessages(roomData.roomId);
+            // Load existing messages (initial load)
+            await loadMessages(roomData.roomId, true);
             
             // Start auto-refresh for new messages
             startAutoRefresh(roomData.roomId);
@@ -138,46 +148,86 @@ export default function DirectConsultationScreen() {
         }
     };
 
-    const loadMessages = async (roomId: number, showLoading = false) => {
+    const loadMessages = async (roomId: number, isInitialLoad = false, beforeMessageId: number | null = null) => {
         // Không load nếu component đã unmount hoặc đã có lỗi unauthorized
         if (isUnmountedRef.current || hasUnauthorizedRef.current) {
             console.log('⏭️ Skipping loadMessages - component unmounted or unauthorized');
+            // Reset loading flags nếu bị skip
+            if (!isInitialLoad && beforeMessageId) {
+                setLoadingMore(false);
+                isLoadingMoreRef.current = false;
+            }
             return;
         }
         
         try {
-            if (showLoading) {
+            if (isInitialLoad) {
                 setIsLoading(true);
+            } else if (beforeMessageId) {
+                // Loading more old messages
+                setLoadingMore(true);
             }
             
-            // Tăng limit để load nhiều tin nhắn hơn
-            const response = await apiClient.get(`/Chat/room/${roomId}/messages`, {
-                params: { limit: 200 } // Tăng từ 50 (default) lên 200
-            });
+            const params: any = { limit: isInitialLoad ? 20 : 10 };
+            if (beforeMessageId) {
+                params.beforeMessageId = beforeMessageId;
+            }
+            
+            const response = await apiClient.get(`/Chat/room/${roomId}/messages`, { params });
             const newMessages = response.data.messages || [];
+            const pagination = response.data.pagination || {};
             
-            // Remove duplicates based on messageId
-            const uniqueMessages = newMessages.filter((message: ChatMessage, index: number, self: ChatMessage[]) => 
-                index === self.findIndex(m => m.messageId === message.messageId)
-            );
-            
-            // So sánh với số lượng tin nhắn hiện tại
-            setMessages(prevMessages => {
-                const previousCount = prevMessages.length;
+            if (isInitialLoad) {
+                // Lần load đầu tiên - replace toàn bộ messages
+                setMessages(newMessages);
+                setOldestMessageId(pagination.oldestMessageId || null);
+                setHasMoreMessages(pagination.hasMore || false);
+                setInitialLoadComplete(true);
                 
-                // Check if there are new messages
-                if (uniqueMessages.length > previousCount) {
-                    setHasNewMessages(true);
-                    // Auto scroll to bottom for new messages
-                    setTimeout(() => {
-                        flatListRef.current?.scrollToEnd({ animated: true });
-                    }, 100);
+                // Đánh dấu user ở dưới cùng và scroll xuống sau initial load
+                isUserAtBottomRef.current = true;
+                setTimeout(() => {
+                    flatListRef.current?.scrollToEnd({ animated: false });
+                }, 200);
+            } else if (beforeMessageId) {
+                // Loading more old messages - prepend to beginning
+                setMessages(prevMessages => {
+                    // Merge và loại bỏ duplicate
+                    const existingIds = new Set(prevMessages.map(m => m.messageId));
+                    const uniqueNewMessages = newMessages.filter((m: ChatMessage) => !existingIds.has(m.messageId));
+                    
+                    // Prepend new messages (oldest first)
+                    const merged = [...uniqueNewMessages, ...prevMessages];
+                    return merged;
+                });
+                setOldestMessageId(pagination.oldestMessageId || null);
+                setHasMoreMessages(pagination.hasMore || false);
+            } else {
+                // Auto-refresh: chỉ load tin nhắn mới (chỉ khi user đang ở dưới cùng)
+                // Không load tin nhắn mới nếu user đang xem tin nhắn cũ để tránh load quá nhiều
+                if (!isUserAtBottomRef.current) {
+                    console.log('⏭️ Skipping auto-refresh - user is viewing old messages');
+                    return;
                 }
                 
-                return uniqueMessages;
-            });
+                setMessages(prevMessages => {
+                    const existingIds = new Set(prevMessages.map(m => m.messageId));
+                    const newMessageIds = new Set(newMessages.map((m: ChatMessage) => m.messageId));
+                    
+                    // Tìm tin nhắn mới (chưa có trong danh sách hiện tại)
+                    const actuallyNewMessages = newMessages.filter((m: ChatMessage) => !existingIds.has(m.messageId));
+                    
+                    if (actuallyNewMessages.length > 0) {
+                        setHasNewMessages(true);
+                        // Append new messages to end
+                        return [...prevMessages, ...actuallyNewMessages];
+                    }
+                    
+                    return prevMessages;
+                });
+            }
             
-            console.log(`📨 Loaded ${uniqueMessages.length} messages for room ${roomId}`);
+            console.log(`📨 Loaded ${newMessages.length} messages for room ${roomId}, isInitialLoad: ${isInitialLoad}, beforeMessageId: ${beforeMessageId}`);
         } catch (error: any) {
             console.error('Error loading messages:', error);
             
@@ -188,9 +238,62 @@ export default function DirectConsultationScreen() {
                 stopAutoRefresh();
             }
         } finally {
-            if (showLoading) {
+            if (isInitialLoad) {
                 setIsLoading(false);
+            } else if (beforeMessageId) {
+                setLoadingMore(false);
             }
+        }
+    };
+
+    const loadMoreMessages = async () => {
+        // Kiểm tra nhiều điều kiện để tránh load quá nhiều lần
+        const now = Date.now();
+        const timeSinceLastLoad = now - lastLoadMoreTimeRef.current;
+        
+        // Kiểm tra component còn mount và authorized không
+        if (isUnmountedRef.current || hasUnauthorizedRef.current) {
+            console.log('⏭️ Skipping loadMoreMessages - component unmounted or unauthorized');
+            isLoadingMoreRef.current = false; // Reset flag nếu component đã unmount
+            return;
+        }
+        
+        if (!roomId || 
+            loadingMore || 
+            isLoadingMoreRef.current || 
+            !hasMoreMessages || 
+            !oldestMessageId ||
+            timeSinceLastLoad < 1000) { // Minimum 1000ms (1 giây) giữa các lần load để tránh quá nhanh
+            return;
+        }
+        
+        // Đánh dấu đang load
+        isLoadingMoreRef.current = true;
+        lastLoadMoreTimeRef.current = now;
+        
+        console.log('📜 Loading more messages...', { oldestMessageId, hasMoreMessages });
+        
+        // Hiệu ứng fade in cho loading indicator
+        Animated.timing(loadingAnimation, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+        }).start();
+        
+        try {
+            await loadMessages(roomId, false, oldestMessageId);
+        } catch (error) {
+            console.error('Error in loadMoreMessages:', error);
+        } finally {
+            // Hiệu ứng fade out cho loading indicator
+            Animated.timing(loadingAnimation, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+            
+            // Reset flag sau khi load xong (kể cả khi bị skip)
+            isLoadingMoreRef.current = false;
         }
     };
 
@@ -217,7 +320,8 @@ export default function DirectConsultationScreen() {
             
             try {
                 setIsAutoRefreshing(true);
-                await loadMessages(roomId, false);
+                // Chỉ load tin nhắn mới (không truyền beforeMessageId)
+                await loadMessages(roomId, false, null);
             } catch (error: any) {
                 console.error('Auto-refresh error:', error);
                 // Nếu lỗi 401, đánh dấu và dừng auto-refresh
@@ -300,15 +404,11 @@ export default function DirectConsultationScreen() {
                 return [...prev, newMessage];
             });
             
-            // Scroll to bottom
+            // Đánh dấu user đang ở dưới cùng và scroll xuống sau khi gửi ảnh
+            isUserAtBottomRef.current = true;
             setTimeout(() => {
                 flatListRef.current?.scrollToEnd({ animated: true });
             }, 100);
-            
-            // Reload messages
-            if (roomId) {
-                await loadMessages(roomId, false);
-            }
         } catch (error: any) {
             console.error('Error sending image:', error);
             Alert.alert('Lỗi', 'Không thể gửi ảnh. Vui lòng thử lại.');
@@ -341,15 +441,11 @@ export default function DirectConsultationScreen() {
                 return [...prev, newMessage];
             });
             
-            // Scroll to bottom sau khi gửi tin nhắn thành công
+            // Đánh dấu user đang ở dưới cùng và scroll xuống sau khi gửi tin nhắn
+            isUserAtBottomRef.current = true;
             setTimeout(() => {
                 flatListRef.current?.scrollToEnd({ animated: true });
             }, 100);
-            
-            // Reload messages để đảm bảo đồng bộ
-            if (roomId) {
-                await loadMessages(roomId, false);
-            }
         } catch (error: any) {
             console.error('Error sending message:', error);
             console.error('Error details:', {
@@ -499,34 +595,105 @@ export default function DirectConsultationScreen() {
                     </View>
                 ) : (
                     <>
-                        <FlatList
-                            ref={flatListRef}
-                            data={messages}
-                            renderItem={renderMessage}
-                            keyExtractor={(item, index) => `${item.messageId}-${item.createdAt}-${index}`}
-                            contentContainerStyle={styles.messageList}
-                            style={styles.flatList}
-                            showsVerticalScrollIndicator={true}
-                            onContentSizeChange={() => {
-                                if (messages.length > 0) {
-                                    setTimeout(() => {
-                                        flatListRef.current?.scrollToEnd({ animated: true });
-                                    }, 50);
+                        <View style={styles.chatContainer}>
+                            {/* Nút "Xem tin nhắn cũ" ở trên cùng - chỉ hiển thị khi có tin nhắn cũ và user scroll lên */}
+                            {showLoadMoreButton && hasMoreMessages && oldestMessageId && (
+                                <Animated.View 
+                                    style={styles.loadMoreButtonContainer}
+                                >
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.loadMoreButton,
+                                            (loadingMore || isLoadingMoreRef.current) && styles.loadMoreButtonDisabled
+                                        ]}
+                                        onPress={loadMoreMessages}
+                                        disabled={loadingMore || isLoadingMoreRef.current}
+                                        activeOpacity={0.7}
+                                    >
+                                        {loadingMore || isLoadingMoreRef.current ? (
+                                            <>
+                                                <ActivityIndicator size="small" color="white" style={{ marginRight: 8 }} />
+                                                <Text style={styles.loadMoreButtonText}>Đang tải...</Text>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Ionicons name="chevron-up" size={18} color="white" style={{ marginRight: 6 }} />
+                                                <Text style={styles.loadMoreButtonText}>Xem tin nhắn cũ</Text>
+                                            </>
+                                        )}
+                                    </TouchableOpacity>
+                                </Animated.View>
+                            )}
+                            
+                            <FlatList
+                                ref={flatListRef}
+                                data={messages}
+                                renderItem={renderMessage}
+                                keyExtractor={(item, index) => `${item.messageId}-${item.createdAt}-${index}`}
+                                contentContainerStyle={styles.messageList}
+                                style={styles.flatList}
+                                showsVerticalScrollIndicator={true}
+                                keyboardShouldPersistTaps="handled"
+                                inverted={false}
+                            onScroll={(event) => {
+                                // Không xử lý scroll nếu component đã unmount hoặc unauthorized
+                                if (isUnmountedRef.current || hasUnauthorizedRef.current) {
+                                    return;
                                 }
+                                
+                                const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+                                const scrollY = contentOffset.y;
+                                const contentHeight = contentSize.height;
+                                const viewportHeight = layoutMeasurement.height;
+                                
+                                // Xác định xem user có đang ở dưới cùng không (ngưỡng 100px để có độ lệch)
+                                const distanceFromBottom = contentHeight - (scrollY + viewportHeight);
+                                const isAtBottom = distanceFromBottom <= 100;
+                                isUserAtBottomRef.current = isAtBottom;
+                                
+                                // Logic hiển thị nút "Xem tin nhắn cũ":
+                                // 1. Có tin nhắn cũ để load (hasMoreMessages && oldestMessageId)
+                                // 2. Không đang loading
+                                // 3. User đã scroll lên (KHÔNG ở dưới cùng) - cách dưới cùng > 200px để đảm bảo đã scroll lên đủ
+                                // 4. Có scroll đủ xa (scrollY > 100) để đảm bảo đã scroll lên
+                                // 5. QUAN TRỌNG: Phải ẩn nút khi ở dưới cùng (isAtBottom = true)
+                                const hasScrolledUp = !isAtBottom && distanceFromBottom > 200;
+                                const hasEnoughScroll = scrollY > 100;
+                                const shouldShowButton = 
+                                    !isAtBottom && // QUAN TRỌNG: Phải ẩn khi ở dưới cùng
+                                    hasMoreMessages && 
+                                    !!oldestMessageId && 
+                                    !loadingMore && 
+                                    !isLoadingMoreRef.current &&
+                                    hasScrolledUp && 
+                                    hasEnoughScroll;
+                                
+                                setShowLoadMoreButton(shouldShowButton);
                             }}
-                            onLayout={() => {
-                                if (messages.length > 0) {
-                                    setTimeout(() => {
-                                        flatListRef.current?.scrollToEnd({ animated: true });
-                                    }, 50);
-                                }
-                            }}
-                            keyboardShouldPersistTaps="handled"
-                            maintainVisibleContentPosition={{
-                                minIndexForVisible: 0,
-                                autoscrollToTopThreshold: 10,
-                            }}
-                        />
+                            scrollEventThrottle={400}
+                            ListHeaderComponent={
+                                loadingMore ? (
+                                    <Animated.View 
+                                        style={[
+                                            styles.loadingMoreContainer,
+                                            {
+                                                opacity: loadingAnimation,
+                                                transform: [{
+                                                    translateY: loadingAnimation.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [-20, 0],
+                                                    }),
+                                                }],
+                                            }
+                                        ]}
+                                    >
+                                        <ActivityIndicator size="small" color="#007bff" />
+                                        <Text style={styles.loadingMoreText}>Đang tải thêm tin nhắn cũ...</Text>
+                                    </Animated.View>
+                                ) : null
+                            }
+                            />
+                        </View>
                         
                         <View style={styles.inputContainer}>
                             <TouchableOpacity 
@@ -769,5 +936,64 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         marginBottom: 8,
     },
+    loadingMoreContainer: {
+        paddingVertical: 20,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'row',
+        gap: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        marginHorizontal: 10,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    loadingMoreText: {
+        fontSize: 14,
+        color: '#007bff',
+        fontWeight: '500',
+        marginLeft: 4,
+    },
+    chatContainer: {
+        flex: 1,
+        position: 'relative',
+    },
+    loadMoreButtonContainer: {
+        position: 'absolute',
+        top: 10,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 100,
+        paddingHorizontal: 20,
+    },
+    loadMoreButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#007bff',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+        minWidth: 160,
+    },
+    loadMoreButtonText: {
+        color: 'white',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    loadMoreButtonDisabled: {
+        opacity: 0.7,
+    },
 });
+
 

@@ -1,6 +1,10 @@
+// IP Address configuration - Thay đổi IP tại đây để sử dụng chung cho toàn bộ app
+export const API_IP = '192.168.1.30';
+export const API_PORT = '5074';
+
 // API configuration
 export const API_CONFIG = {
-  BASE_URL: 'http://192.168.1.33:5074/api',
+  BASE_URL: `http://${API_IP}:${API_PORT}/api`,
   TIMEOUT: 10000,
 };
 

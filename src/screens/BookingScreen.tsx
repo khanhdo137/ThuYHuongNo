@@ -5,6 +5,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useEffect, useState } from 'react';
 import { Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Dialog, Divider, TextInput as PaperInput, Text as PaperText, Portal, RadioButton } from 'react-native-paper';
+import VirtualAssistant from '../components/VirtualAssistant';
 
 // Custom component for form rows
 interface FormRowProps {
@@ -623,6 +624,15 @@ export default function BookingScreen() {
                     </Dialog>
                 </Portal>
             </ScrollView>
+            <VirtualAssistant 
+                screen="Booking" 
+                onAction={(actionType, actionData) => {
+                    // Handle actions from virtual assistant
+                    if (actionType === 'view_service' && actionData?.serviceId) {
+                        // Navigate to service detail
+                    }
+                }}
+            />
         </SafeAreaView>
     );
 }

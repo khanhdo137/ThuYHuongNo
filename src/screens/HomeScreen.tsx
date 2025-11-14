@@ -2,10 +2,13 @@ import apiClient from '@/api/client';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View, Animated, Pressable, TouchableWithoutFeedback } from 'react-native';
 import { Button, Card, Divider, ActivityIndicator as PaperActivityIndicator, Text as PaperText, Surface } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 import Swiper from 'react-native-swiper';
 import GradientBackground from '../components/GradientBackground';
+import VirtualAssistant from '../components/VirtualAssistant';
+import AssistantButton from '../components/AssistantButton';
 
 // --- PAGE_SIZE dùng cho tất cả các content ---
 const PAGE_SIZE = 10;
@@ -79,14 +82,28 @@ const ServicesContent = ({ resetSignal }: { resetSignal: number }) => {
     if (!selectedCategory) {
         return (
             <View style={{ padding: 16 }}>
-                <PaperText variant="titleMedium" style={{ marginBottom: 12 }}>Danh mục dịch vụ</PaperText>
-                {serviceCategories.map(item => (
-                    <Card key={item.key} style={{ marginBottom: 12 }} onPress={() => setSelectedCategory(item.key)}>
-                        <Card.Title title={item.key} left={props => <Ionicons name={item.icon as any} size={30} color="#007bff" />} />
-                        <Card.Content>
-                            <PaperText>{item.description}</PaperText>
-                        </Card.Content>
-                    </Card>
+                <View style={{ marginBottom: 20 }}>
+                    <Text style={styles.sectionTitle}>🏥 Danh mục dịch vụ</Text>
+                    <Text style={styles.sectionSubtitle}>Chọn loại dịch vụ bạn quan tâm</Text>
+                </View>
+                {serviceCategories.map((item, index) => (
+                    <TouchableOpacity key={item.key} onPress={() => setSelectedCategory(item.key)} activeOpacity={0.8}>
+                        <LinearGradient
+                            colors={['#667eea', '#764ba2']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.categoryCard}
+                        >
+                            <View style={styles.categoryIconContainer}>
+                                <Ionicons name={item.icon as any} size={32} color="white" />
+                            </View>
+                            <View style={styles.categoryContent}>
+                                <Text style={styles.categoryTitle}>{item.key}</Text>
+                                <Text style={styles.categoryDescription}>{item.description}</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.8)" />
+                        </LinearGradient>
+                    </TouchableOpacity>
                 ))}
             </View>
         );
@@ -95,34 +112,80 @@ const ServicesContent = ({ resetSignal }: { resetSignal: number }) => {
     // Đang ở màn hình danh sách dịch vụ của 1 loại
     return (
         <View style={{ padding: 16 }}>
-            <Button mode="outlined" onPress={() => setSelectedCategory(null)} style={{ marginBottom: 10 }}>
-                {"< Quay lại danh mục dịch vụ"}
-            </Button>
-            <PaperText variant="titleMedium" style={{ marginBottom: 10 }}>Dịch vụ: {selectedCategory}</PaperText>
+            <TouchableOpacity 
+                onPress={() => setSelectedCategory(null)} 
+                style={styles.backButton}
+                activeOpacity={0.7}
+            >
+                <Ionicons name="arrow-back" size={20} color="#667eea" />
+                <Text style={styles.backButtonText}>Quay lại danh mục</Text>
+            </TouchableOpacity>
+            
+            <View style={{ marginBottom: 16, marginTop: 12 }}>
+                <Text style={styles.sectionTitle}>📋 {selectedCategory}</Text>
+                <Text style={styles.sectionSubtitle}>Danh sách dịch vụ hiện có</Text>
+            </View>
+            
             {loading && (
-                <View style={{ alignItems: 'center', marginVertical: 30 }}>
-                    <PaperActivityIndicator animating size="large" color="#007bff" />
-                    <PaperText style={{ marginTop: 10, color: '#007bff' }}>Đang tải dữ liệu...</PaperText>
+                <View style={styles.loadingContainer}>
+                    <LinearGradient
+                        colors={['#667eea', '#764ba2']}
+                        style={styles.loadingGradient}
+                    >
+                        <PaperActivityIndicator animating size="large" color="white" />
+                        <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+                    </LinearGradient>
                 </View>
             )}
-            {!loading && services.length === 0 && <PaperText>Không có dịch vụ nào.</PaperText>}
-            {services.map(s => {
+            {!loading && services.length === 0 && (
+                <View style={styles.emptyContainer}>
+                    <Ionicons name="folder-open-outline" size={64} color="#ccc" />
+                    <Text style={styles.emptyText}>Không có dịch vụ nào</Text>
+                </View>
+            )}
+            {services.map((s, index) => {
                 const mediaLinks = extractMediaLinks(s.description || '');
                 const firstMedia = mediaLinks[0];
                 return (
-                    <Card key={s.serviceId} style={{ marginBottom: 12 }} onPress={() => (navigation as any).navigate('ServiceDetail', { service: s })}>
-                        {firstMedia && isImage(firstMedia) && (
-                            <Card.Cover source={{ uri: firstMedia }} style={{ height: 140 }} />
-                        )}
-                        <Card.Content>
-                            <PaperText variant="titleMedium">{s.name}</PaperText>
-                            <PaperText style={{ color: '#666', marginTop: 2 }} numberOfLines={2}>{s.description}</PaperText>
-                            <View style={{ flexDirection: 'row', marginTop: 6 }}>
-                                <PaperText style={{ color: '#007bff', fontWeight: '600', marginRight: 15 }}>Giá: {s.priceText || 'Liên hệ'}</PaperText>
-                                <PaperText style={{ color: '#28a745', fontWeight: '600' }}>Thời lượng: {s.durationText || 'Liên hệ'}</PaperText>
+                    <TouchableOpacity 
+                        key={s.serviceId} 
+                        onPress={() => (navigation as any).navigate('ServiceDetail', { service: s })}
+                        activeOpacity={0.9}
+                    >
+                        <View style={styles.serviceItemCard}>
+                            {firstMedia && isImage(firstMedia) ? (
+                                <View style={styles.serviceImageContainer}>
+                                    <Image source={{ uri: firstMedia }} style={styles.serviceImage} />
+                                    <LinearGradient
+                                        colors={['transparent', 'rgba(0,0,0,0.6)']}
+                                        style={styles.serviceImageOverlay}
+                                    />
+                                </View>
+                            ) : (
+                                <View style={styles.serviceNoImage}>
+                                    <Ionicons name="medical" size={40} color="#667eea" />
+                                </View>
+                            )}
+                            
+                            <View style={styles.serviceItemContent}>
+                                <Text style={styles.serviceItemTitle}>{s.name}</Text>
+                                <Text style={styles.serviceItemDescription} numberOfLines={2}>
+                                    {s.description}
+                                </Text>
+                                
+                                <View style={styles.serviceItemMeta}>
+                                    <View style={styles.serviceMetaItem}>
+                                        <Ionicons name="pricetag" size={16} color="#667eea" />
+                                        <Text style={styles.serviceMetaText}>{s.priceText || 'Liên hệ'}</Text>
+                                    </View>
+                                    <View style={styles.serviceMetaItem}>
+                                        <Ionicons name="time" size={16} color="#764ba2" />
+                                        <Text style={styles.serviceMetaText}>{s.durationText || 'Liên hệ'}</Text>
+                                    </View>
+                                </View>
                             </View>
-                        </Card.Content>
-                    </Card>
+                        </View>
+                    </TouchableOpacity>
                 );
             })}
             <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
@@ -168,20 +231,81 @@ const NewsContent = ({ resetSignal }: { resetSignal: number }) => {
         fetchNews(page);
     }, [page]);
 
+    const renderPagination = () => (
+        <View style={styles.paginationContainer}>
+            <TouchableOpacity 
+                onPress={() => setPage(p => Math.max(1, p - 1))} 
+                disabled={page === 1}
+                style={[styles.paginationButton, page === 1 && styles.paginationButtonDisabled]}
+            >
+                <Ionicons name="chevron-back" size={20} color={page === 1 ? '#ccc' : '#667eea'} />
+                <Text style={[styles.paginationButtonText, page === 1 && styles.paginationButtonTextDisabled]}>Trước</Text>
+            </TouchableOpacity>
+            <View style={styles.paginationInfo}>
+                <Text style={styles.paginationText}>{page}</Text>
+                <Text style={styles.paginationSeparator}>/</Text>
+                <Text style={styles.paginationTotal}>{totalPages}</Text>
+            </View>
+            <TouchableOpacity 
+                onPress={() => setPage(p => Math.min(totalPages, p + 1))} 
+                disabled={page === totalPages}
+                style={[styles.paginationButton, page === totalPages && styles.paginationButtonDisabled]}
+            >
+                <Text style={[styles.paginationButtonText, page === totalPages && styles.paginationButtonTextDisabled]}>Sau</Text>
+                <Ionicons name="chevron-forward" size={20} color={page === totalPages ? '#ccc' : '#667eea'} />
+            </TouchableOpacity>
+        </View>
+    );
+
     return (
         <View style={{ padding: 16 }}>
-            {loading && <PaperText>Đang tải...</PaperText>}
-            {!loading && news.length === 0 && <PaperText>Không có tin tức sự kiện.</PaperText>}
+            {loading && (
+                <View style={styles.loadingContainer}>
+                    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.loadingGradient}>
+                        <PaperActivityIndicator animating size="large" color="white" />
+                        <Text style={styles.loadingText}>Đang tải...</Text>
+                    </LinearGradient>
+                </View>
+            )}
+            {!loading && news.length === 0 && (
+                <View style={styles.emptyContainer}>
+                    <Ionicons name="newspaper-outline" size={64} color="#ccc" />
+                    <Text style={styles.emptyText}>Không có tin tức sự kiện</Text>
+                </View>
+            )}
             {news.map(item => (
-                <Card key={item.newsId} style={{ marginBottom: 12 }} onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}>
-                    {item.imageUrl && (
-                        <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
-                    )}
-                    <Card.Content>
-                        <PaperText variant="titleMedium">{item.title}</PaperText>
-                        <PaperText style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</PaperText>
-                    </Card.Content>
-                </Card>
+                <TouchableOpacity 
+                    key={item.newsId} 
+                    onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}
+                    activeOpacity={0.9}
+                >
+                    <View style={styles.newsCard}>
+                        {item.imageUrl ? (
+                            <View style={styles.newsImageContainer}>
+                                <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
+                                <LinearGradient
+                                    colors={['transparent', 'rgba(0,0,0,0.7)']}
+                                    style={styles.newsImageGradient}
+                                >
+                                    <Ionicons name="newspaper" size={24} color="white" />
+                                </LinearGradient>
+                            </View>
+                        ) : (
+                            <View style={styles.newsNoImage}>
+                                <Ionicons name="newspaper" size={40} color="#667eea" />
+                            </View>
+                        )}
+                        <View style={styles.newsContent}>
+                            <Text style={styles.newsTitle}>{item.title}</Text>
+                            <View style={styles.newsMetaContainer}>
+                                <Ionicons name="calendar-outline" size={14} color="#999" />
+                                <Text style={styles.newsDate}>
+                                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : ''}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                </TouchableOpacity>
             ))}
             <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
                 <Button mode="contained-tonal" onPress={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ marginHorizontal: 10 }}>
@@ -202,6 +326,32 @@ const KnowledgeContent = ({ resetSignal }: { resetSignal: number }) => {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const navigation = useNavigation();
+
+    const renderPagination = () => (
+        <View style={styles.paginationContainer}>
+            <TouchableOpacity 
+                onPress={() => setPage(p => Math.max(1, p - 1))} 
+                disabled={page === 1}
+                style={[styles.paginationButton, page === 1 && styles.paginationButtonDisabled]}
+            >
+                <Ionicons name="chevron-back" size={20} color={page === 1 ? '#ccc' : '#667eea'} />
+                <Text style={[styles.paginationButtonText, page === 1 && styles.paginationButtonTextDisabled]}>Trước</Text>
+            </TouchableOpacity>
+            <View style={styles.paginationInfo}>
+                <Text style={styles.paginationText}>{page}</Text>
+                <Text style={styles.paginationSeparator}>/</Text>
+                <Text style={styles.paginationTotal}>{totalPages}</Text>
+            </View>
+            <TouchableOpacity 
+                onPress={() => setPage(p => Math.min(totalPages, p + 1))} 
+                disabled={page === totalPages}
+                style={[styles.paginationButton, page === totalPages && styles.paginationButtonDisabled]}
+            >
+                <Text style={[styles.paginationButtonText, page === totalPages && styles.paginationButtonTextDisabled]}>Sau</Text>
+                <Ionicons name="chevron-forward" size={20} color={page === totalPages ? '#ccc' : '#667eea'} />
+            </TouchableOpacity>
+        </View>
+    );
 
     const fetchNews = async (pageNum = 1) => {
         setLoading(true);
@@ -227,18 +377,51 @@ const KnowledgeContent = ({ resetSignal }: { resetSignal: number }) => {
 
     return (
         <View style={{ padding: 16 }}>
-            {loading && <PaperText>Đang tải...</PaperText>}
-            {!loading && news.length === 0 && <PaperText>Không có bài kiến thức.</PaperText>}
+            {loading && (
+                <View style={styles.loadingContainer}>
+                    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.loadingGradient}>
+                        <PaperActivityIndicator animating size="large" color="white" />
+                        <Text style={styles.loadingText}>Đang tải...</Text>
+                    </LinearGradient>
+                </View>
+            )}
+            {!loading && news.length === 0 && (
+                <View style={styles.emptyContainer}>
+                    <Ionicons name="book-outline" size={64} color="#ccc" />
+                    <Text style={styles.emptyText}>Không có bài kiến thức</Text>
+                </View>
+            )}
             {news.map(item => (
-                <Card key={item.newsId} style={{ marginBottom: 12 }} onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}>
-                    {item.imageUrl && (
-                        <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
-                    )}
-                    <Card.Content>
-                        <PaperText variant="titleMedium">{item.title}</PaperText>
-                        <PaperText style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</PaperText>
-                    </Card.Content>
-                </Card>
+                <TouchableOpacity 
+                    key={item.newsId} 
+                    onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}
+                    activeOpacity={0.9}
+                >
+                    <View style={styles.knowledgeCard}>
+                        {item.imageUrl ? (
+                            <View style={styles.knowledgeImageContainer}>
+                                <Image source={{ uri: item.imageUrl }} style={styles.knowledgeImage} />
+                                <View style={styles.knowledgeBadge}>
+                                    <Ionicons name="book" size={16} color="white" />
+                                </View>
+                            </View>
+                        ) : (
+                            <View style={styles.knowledgeNoImage}>
+                                <Ionicons name="book" size={40} color="#667eea" />
+                            </View>
+                        )}
+                        <View style={styles.knowledgeContent}>
+                            <Text style={styles.knowledgeTitle}>{item.title}</Text>
+                            <View style={styles.knowledgeMetaContainer}>
+                                <Ionicons name="time-outline" size={14} color="#999" />
+                                <Text style={styles.knowledgeDate}>
+                                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : ''}
+                                </Text>
+                            </View>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color="#ccc" />
+                    </View>
+                </TouchableOpacity>
             ))}
             <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
                 <Button mode="contained-tonal" onPress={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ marginHorizontal: 10 }}>
@@ -259,6 +442,32 @@ const VideoContent = ({ resetSignal }: { resetSignal: number }) => {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const navigation = useNavigation();
+
+    const renderPagination = () => (
+        <View style={styles.paginationContainer}>
+            <TouchableOpacity 
+                onPress={() => setPage(p => Math.max(1, p - 1))} 
+                disabled={page === 1}
+                style={[styles.paginationButton, page === 1 && styles.paginationButtonDisabled]}
+            >
+                <Ionicons name="chevron-back" size={20} color={page === 1 ? '#ccc' : '#667eea'} />
+                <Text style={[styles.paginationButtonText, page === 1 && styles.paginationButtonTextDisabled]}>Trước</Text>
+            </TouchableOpacity>
+            <View style={styles.paginationInfo}>
+                <Text style={styles.paginationText}>{page}</Text>
+                <Text style={styles.paginationSeparator}>/</Text>
+                <Text style={styles.paginationTotal}>{totalPages}</Text>
+            </View>
+            <TouchableOpacity 
+                onPress={() => setPage(p => Math.min(totalPages, p + 1))} 
+                disabled={page === totalPages}
+                style={[styles.paginationButton, page === totalPages && styles.paginationButtonDisabled]}
+            >
+                <Text style={[styles.paginationButtonText, page === totalPages && styles.paginationButtonTextDisabled]}>Sau</Text>
+                <Ionicons name="chevron-forward" size={20} color={page === totalPages ? '#ccc' : '#667eea'} />
+            </TouchableOpacity>
+        </View>
+    );
 
     const fetchNews = async (pageNum = 1) => {
         setLoading(true);
@@ -284,33 +493,62 @@ const VideoContent = ({ resetSignal }: { resetSignal: number }) => {
 
     return (
         <View style={{ padding: 16 }}>
-            {loading && <PaperText>Đang tải...</PaperText>}
-            {!loading && news.length === 0 && <PaperText>Không có video.</PaperText>}
+            {loading && (
+                <View style={styles.loadingContainer}>
+                    <LinearGradient colors={['#667eea', '#764ba2']} style={styles.loadingGradient}>
+                        <PaperActivityIndicator animating size="large" color="white" />
+                        <Text style={styles.loadingText}>Đang tải...</Text>
+                    </LinearGradient>
+                </View>
+            )}
+            {!loading && news.length === 0 && (
+                <View style={styles.emptyContainer}>
+                    <Ionicons name="videocam-outline" size={64} color="#ccc" />
+                    <Text style={styles.emptyText}>Không có video</Text>
+                </View>
+            )}
             {news.map(item => (
-                <Card key={item.newsId} style={{ marginBottom: 12 }} onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}>
-                    {item.imageUrl && (
-                        <Image source={{ uri: item.imageUrl }} style={styles.newsImage} />
-                    )}
-                    <Card.Content>
-                        <PaperText variant="titleMedium">{item.title}</PaperText>
-                        <PaperText style={styles.newsDate}>{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</PaperText>
-                    </Card.Content>
-                </Card>
+                <TouchableOpacity 
+                    key={item.newsId} 
+                    onPress={() => (navigation as any).navigate('NewsDetail', { news: item })}
+                    activeOpacity={0.9}
+                >
+                    <View style={styles.videoCard}>
+                        {item.imageUrl ? (
+                            <View style={styles.videoImageContainer}>
+                                <Image source={{ uri: item.imageUrl }} style={styles.videoImage} />
+                                <LinearGradient
+                                    colors={['transparent', 'rgba(0,0,0,0.8)']}
+                                    style={styles.videoGradientOverlay}
+                                >
+                                    <View style={styles.playButton}>
+                                        <Ionicons name="play" size={32} color="white" />
+                                    </View>
+                                </LinearGradient>
+                            </View>
+                        ) : (
+                            <View style={styles.videoNoImage}>
+                                <Ionicons name="videocam" size={40} color="#667eea" />
+                            </View>
+                        )}
+                        <View style={styles.videoContent}>
+                            <Text style={styles.videoTitle}>{item.title}</Text>
+                            <View style={styles.videoMetaContainer}>
+                                <Ionicons name="calendar-outline" size={14} color="#999" />
+                                <Text style={styles.videoDate}>
+                                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : ''}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+                </TouchableOpacity>
             ))}
-            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
-                <Button mode="contained-tonal" onPress={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ marginHorizontal: 10 }}>
-                    Trang trước
-                </Button>
-                <PaperText style={{ alignSelf: 'center', fontWeight: 'bold', marginHorizontal: 10 }}>{page} / {totalPages}</PaperText>
-                <Button mode="contained-tonal" onPress={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ marginHorizontal: 10 }}>
-                    Trang sau
-                </Button>
-            </View>
+            {renderPagination()}
         </View>
     );
 };
 
-const TABS = ['Dịch vụ', 'Tin tức-sự kiện', 'Kiến Thức', 'Video'];
+const TABS = ['Dịch vụ', 'Tin tức', 'Kiến Thức', 'Video'];
 
 // Mock banner images
 const BANNER_IMAGES = [
@@ -322,8 +560,10 @@ const BANNER_IMAGES = [
   ];
 
 export default function HomeScreen() {
+    const navigation = useNavigation<any>();
     const [activeTab, setActiveTab] = useState(0);
     const [resetSignal, setResetSignal] = useState(0);
+    const [showAssistant, setShowAssistant] = useState(false);
 
     const renderContent = () => {
         switch (activeTab) {
@@ -356,47 +596,62 @@ export default function HomeScreen() {
                         ))}
                     </Swiper>
                 </View>
-                <View style={{ flexDirection: 'row', backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 8 }}>
-                    {TABS.map((tab, idx) => (
-                        <TouchableOpacity
-                            key={tab}
-                            onPress={() => {
-                                setActiveTab(idx);
-                                setResetSignal(s => s + 1);
-                            }}
-                            style={{
-                                flex: 1,
-                                marginHorizontal: 4,
-                                backgroundColor: activeTab === idx ? '#007bff' : 'white',
-                                paddingVertical: 10,
-                                borderRadius: 20,
-                                borderWidth: 1,
-                                borderColor: '#007bff',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                minHeight: 40,
-                            }}
-                        >
-                            <Text
-                                style={{
-                                    color: activeTab === idx ? 'white' : '#007bff',
-                                    fontWeight: 'bold',
-                                    fontSize: 13,
-                                    textAlign: 'center',
+                <View style={styles.tabContainer}>
+                    {TABS.map((tab, idx) => {
+                        const isActive = activeTab === idx;
+                        return (
+                            <TouchableWithoutFeedback
+                                key={tab}
+                                onPress={() => {
+                                    setActiveTab(idx);
+                                    setResetSignal(s => s + 1);
                                 }}
-                                numberOfLines={2}
-                                ellipsizeMode="tail"
                             >
-                                {tab}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
+                                <View style={styles.tabButtonWrapper}>
+                                    {isActive ? (
+                                        <LinearGradient
+                                            colors={['#667eea', '#764ba2']}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 0 }}
+                                            style={styles.tabButtonActive}
+                                        >
+                                            <Text style={styles.tabTextActive} numberOfLines={2}>
+                                                {tab}
+                                            </Text>
+                                        </LinearGradient>
+                                    ) : (
+                                        <View style={styles.tabButtonInactive}>
+                                            <Text style={styles.tabTextInactive} numberOfLines={2}>
+                                                {tab}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </TouchableWithoutFeedback>
+                        );
+                    })}
                 </View>
                 <Divider />
                 <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
                     {renderContent()}
                 </ScrollView>
             </Surface>
+            <VirtualAssistant 
+                screen="Home"
+                visible={showAssistant}
+                onClose={() => { console.log('HomeScreen: onClose called -> hide assistant'); setShowAssistant(false); }}
+                onAction={(actionType, actionData) => {
+                    console.log('HomeScreen: onAction', actionType, actionData);
+                    if (actionType === 'book_appointment') {
+                        navigation.navigate('ServiceDetail');
+                        setShowAssistant(false);
+                    } else if (actionType === 'view_service' && actionData?.serviceId) {
+                        navigation.navigate('ServiceDetail', { serviceId: actionData.serviceId });
+                        setShowAssistant(false);
+                    }
+                }}
+            />
+            <AssistantButton onPress={() => { console.log('HomeScreen: open assistant requested'); setShowAssistant(true); }} disabled={showAssistant} />
         </SafeAreaView>
         </GradientBackground>
     );
@@ -405,141 +660,589 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#f5f7fa',
     },
-    container: {
-        flex: 1,
+    assistantContainer: {
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        zIndex: 1000,
     },
-    header: {
-        padding: 16,
-        backgroundColor: 'white',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-        alignItems: 'center',
-    },
-    headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-    },
-    tabBar: {
+    
+    // Tab Container
+    tabContainer: {
         flexDirection: 'row',
         backgroundColor: 'white',
         paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingVertical: 12,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
     },
-    tabItem: {
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderRadius: 20,
+    tabButtonWrapper: {
+        flex: 1,
         marginHorizontal: 4,
     },
-    activeTabItem: {
-        backgroundColor: '#007bff',
+    tabButtonActive: {
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 44,
     },
-    tabText: {
-        color: '#333',
-        fontWeight: '600',
+    tabButtonInactive: {
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        borderRadius: 20,
+        backgroundColor: '#f5f7fa',
+        borderWidth: 1,
+        borderColor: '#667eea',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 44,
     },
-    activeTabText: {
+    tabTextActive: {
         color: 'white',
+        fontWeight: '700',
+        fontSize: 13,
+        textAlign: 'center',
     },
-    contentContainer: {
-        padding: 15,
+    tabTextInactive: {
+        color: '#667eea',
+        fontWeight: '600',
+        fontSize: 13,
+        textAlign: 'center',
     },
-    card: {
-        backgroundColor: 'white',
-        borderRadius: 12,
-        marginBottom: 15,
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
-        shadowOpacity: 0.20,
-        shadowRadius: 1.41,
-        elevation: 2,
-        overflow: 'hidden',
+    
+    // Section Title
+    sectionTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        color: '#2d3748',
+        marginBottom: 4,
     },
-    cardTextContainer: {
-        flex: 1,
-    },
-    cardTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
-    },
-    cardDescription: {
+    sectionSubtitle: {
         fontSize: 14,
-        color: '#666',
-        marginTop: 4,
+        color: '#718096',
     },
-    // Service Styles
-    serviceCard: {
+    
+    // Category Card (Services Categories)
+    categoryCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 15,
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 12,
+        elevation: 4,
+        shadowColor: '#667eea',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
     },
-    serviceIcon: {
-        marginRight: 15,
+    categoryIconContainer: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
     },
-    // News Styles
+    categoryContent: {
+        flex: 1,
+    },
+    categoryTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: 'white',
+        marginBottom: 4,
+    },
+    categoryDescription: {
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.9)',
+        lineHeight: 18,
+    },
+    
+    // Back Button
+    backButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: '#f0f4ff',
+        alignSelf: 'flex-start',
+    },
+    backButtonText: {
+        marginLeft: 8,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#667eea',
+    },
+    
+    // Loading
+    loadingContainer: {
+        marginVertical: 40,
+        alignItems: 'center',
+    },
+    loadingGradient: {
+        paddingVertical: 24,
+        paddingHorizontal: 32,
+        borderRadius: 16,
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 15,
+        fontWeight: '600',
+        color: 'white',
+    },
+    
+    // Empty State
+    emptyContainer: {
+        paddingVertical: 60,
+        alignItems: 'center',
+    },
+    emptyText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#999',
+        fontWeight: '500',
+    },
+    
+    // Service Item Card
+    serviceItemCard: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        marginBottom: 16,
+        overflow: 'hidden',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+    },
+    serviceImageContainer: {
+        position: 'relative',
+        height: 160,
+    },
+    serviceImage: {
+        width: '100%',
+        height: '100%',
+    },
+    serviceImageOverlay: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    serviceNoImage: {
+        height: 160,
+        backgroundColor: '#f0f4ff',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    serviceItemContent: {
+        padding: 16,
+    },
+    serviceItemTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#2d3748',
+        marginBottom: 8,
+    },
+    serviceItemDescription: {
+        fontSize: 14,
+        color: '#718096',
+        lineHeight: 20,
+        marginBottom: 12,
+    },
+    serviceItemMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    serviceMetaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    serviceMetaText: {
+        marginLeft: 6,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#667eea',
+    },
+    
+    // News Card
     newsCard: {
-        
+        flexDirection: 'row',
+        backgroundColor: 'white',
+        borderRadius: 12,
+        marginBottom: 12,
+        overflow: 'hidden',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    newsImageContainer: {
+        width: 120,
+        height: 120,
+        position: 'relative',
     },
     newsImage: {
         width: '100%',
-        height: 150,
+        height: '100%',
     },
-    newsTextContainer: {
-        padding: 15,
+    newsImageGradient: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'flex-end',
+        alignItems: 'flex-end',
+        padding: 8,
+    },
+    newsNoImage: {
+        width: 120,
+        height: 120,
+        backgroundColor: '#f0f4ff',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    newsContent: {
+        flex: 1,
+        padding: 12,
+        justifyContent: 'space-between',
+    },
+    newsTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#2d3748',
+        lineHeight: 20,
+    },
+    newsMetaContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
     },
     newsDate: {
         fontSize: 12,
-        color: '#888',
-        marginTop: 5,
+        color: '#999',
+        marginLeft: 6,
     },
-    // Knowledge Styles
+    
+    // Knowledge Card
     knowledgeCard: {
-        padding: 20,
+        flexDirection: 'row',
+        backgroundColor: 'white',
+        borderRadius: 12,
+        marginBottom: 12,
+        padding: 12,
+        alignItems: 'center',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
-    knowledgeCategory: {
-        fontSize: 13,
-        color: '#007bff',
-        marginTop: 8,
-        fontWeight: '500',
-    },
-    // Video Styles
-    videoCard: {
+    knowledgeImageContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginRight: 12,
         position: 'relative',
     },
-    videoThumbnail: {
+    knowledgeImage: {
         width: '100%',
-        height: 180,
+        height: '100%',
     },
-    videoOverlay: {
+    knowledgeBadge: {
+        position: 'absolute',
+        bottom: 4,
+        right: 4,
+        backgroundColor: '#667eea',
+        borderRadius: 12,
+        width: 24,
+        height: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    knowledgeNoImage: {
+        width: 80,
+        height: 80,
+        borderRadius: 12,
+        backgroundColor: '#f0f4ff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    knowledgeContent: {
+        flex: 1,
+    },
+    knowledgeTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#2d3748',
+        lineHeight: 20,
+        marginBottom: 8,
+    },
+    knowledgeMetaContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    knowledgeDate: {
+        fontSize: 12,
+        color: '#999',
+        marginLeft: 6,
+    },
+    
+    // Video Card
+    videoCard: {
+        backgroundColor: 'white',
+        borderRadius: 12,
+        marginBottom: 12,
+        overflow: 'hidden',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    videoImageContainer: {
+        height: 180,
+        position: 'relative',
+    },
+    videoImage: {
+        width: '100%',
+        height: '100%',
+    },
+    videoGradientOverlay: {
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.3)',
     },
-    videoTextContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: 10,
-        backgroundColor: 'rgba(0,0,0,0.5)',
+    playButton: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(102, 126, 234, 0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 4,
+        shadowColor: '#667eea',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.5,
+        shadowRadius: 8,
+    },
+    videoNoImage: {
+        height: 180,
+        backgroundColor: '#f0f4ff',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    videoContent: {
+        padding: 12,
     },
     videoTitle: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#2d3748',
+        lineHeight: 20,
+        marginBottom: 8,
     },
-    videoDuration: {
-        color: 'white',
+    videoMetaContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    videoDate: {
         fontSize: 12,
-        marginTop: 4,
-    }
+        color: '#999',
+        marginLeft: 6,
+    },
+    
+    // Pagination
+    paginationContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 20,
+        paddingHorizontal: 16,
+    },
+    paginationButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor: '#f0f4ff',
+        borderWidth: 1,
+        borderColor: '#667eea',
+    },
+    paginationButtonDisabled: {
+        backgroundColor: '#f5f5f5',
+        borderColor: '#e0e0e0',
+    },
+    paginationButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#667eea',
+        marginHorizontal: 4,
+    },
+    paginationButtonTextDisabled: {
+        color: '#ccc',
+    },
+    paginationInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        borderRadius: 12,
+        backgroundColor: '#667eea',
+    },
+    paginationText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: 'white',
+    },
+    paginationSeparator: {
+        fontSize: 16,
+        color: 'rgba(255,255,255,0.7)',
+        marginHorizontal: 8,
+    },
+    paginationTotal: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.9)',
+    },
+    
+    // Service Detail Styles
+    detailHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+    },
+    detailBackButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    detailHeaderTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: 'white',
+    },
+    detailCard: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    detailServiceName: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#2d3748',
+        textAlign: 'center',
+    },
+    detailInfoCard: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    detailInfoRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+    },
+    detailInfoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    detailInfoLabel: {
+        fontSize: 12,
+        color: '#999',
+        marginBottom: 4,
+    },
+    detailInfoValue: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#2d3748',
+    },
+    detailCategoryCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f0f4ff',
+        padding: 12,
+        borderRadius: 12,
+        marginBottom: 16,
+    },
+    detailCategoryText: {
+        marginLeft: 10,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#667eea',
+    },
+    detailDescriptionCard: {
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 16,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    detailDescriptionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#2d3748',
+        marginBottom: 12,
+    },
+    detailDescriptionText: {
+        fontSize: 15,
+        color: '#4a5568',
+        lineHeight: 24,
+    },
+    detailActionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 16,
+        borderRadius: 16,
+        marginBottom: 20,
+        elevation: 4,
+        shadowColor: '#667eea',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+    },
+    detailActionButtonText: {
+        marginLeft: 12,
+        fontSize: 16,
+        fontWeight: '700',
+        color: 'white',
+    },
 }); 
 
 export function ServiceDetailScreen() {
@@ -547,21 +1250,92 @@ export function ServiceDetailScreen() {
     const navigation = useNavigation();
     // @ts-ignore
     const { service } = route.params || {};
-    if (!service) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text>Không tìm thấy thông tin dịch vụ.</Text></View>;
+    
+    if (!service) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7fa', justifyContent: 'center', alignItems: 'center' }}>
+                <Ionicons name="alert-circle" size={64} color="#ccc" />
+                <Text style={{ marginTop: 16, fontSize: 16, color: '#999' }}>Không tìm thấy thông tin dịch vụ</Text>
+            </SafeAreaView>
+        );
+    }
+    
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
-            <View style={{ padding: 20, paddingTop: 0 }}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ position: 'absolute', top: 10, left: 10, zIndex: 2 }}>
-                    <Ionicons name="arrow-back" size={28} color="#007bff" />
-                </TouchableOpacity>
-                <View style={{ minHeight: 40 }} />
-                <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 10 }}>{service.name}</Text>
-                <Text style={{ color: '#007bff', fontWeight: '600', fontSize: 16, marginBottom: 5 }}>Giá: {service.priceText || 'Liên hệ'}</Text>
-                <Text style={{ color: '#28a745', fontWeight: '600', fontSize: 16, marginBottom: 5 }}>Thời lượng: {service.durationText || 'Liên hệ'}</Text>
-                {service.category && <Text style={{ color: '#888', fontSize: 15, marginBottom: 10 }}>Loại: {service.category}</Text>}
-                <Text style={{ fontSize: 16, color: '#333', marginTop: 10 }}>{service.description}</Text>
-            </View>
-        </SafeAreaView>
+        <GradientBackground>
+            <SafeAreaView style={{ flex: 1 }}>
+                {/* Header with Back Button */}
+                <LinearGradient
+                    colors={['#667eea', '#764ba2']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.detailHeader}
+                >
+                    <TouchableOpacity 
+                        onPress={() => navigation.goBack()} 
+                        style={styles.detailBackButton}
+                    >
+                        <Ionicons name="arrow-back" size={24} color="white" />
+                    </TouchableOpacity>
+                    <Text style={styles.detailHeaderTitle}>Chi tiết dịch vụ</Text>
+                    <View style={{ width: 40 }} />
+                </LinearGradient>
+
+                <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+                    {/* Service Name Card */}
+                    <View style={styles.detailCard}>
+                        <Text style={styles.detailServiceName}>{service.name}</Text>
+                    </View>
+
+                    {/* Price & Duration Card */}
+                    <View style={styles.detailInfoCard}>
+                        <View style={styles.detailInfoRow}>
+                            <View style={styles.detailInfoItem}>
+                                <Ionicons name="pricetag" size={24} color="#667eea" />
+                                <View style={{ marginLeft: 12 }}>
+                                    <Text style={styles.detailInfoLabel}>Giá dịch vụ</Text>
+                                    <Text style={styles.detailInfoValue}>{service.priceText || 'Liên hệ'}</Text>
+                                </View>
+                            </View>
+                            
+                            <View style={styles.detailInfoItem}>
+                                <Ionicons name="time" size={24} color="#764ba2" />
+                                <View style={{ marginLeft: 12 }}>
+                                    <Text style={styles.detailInfoLabel}>Thời lượng</Text>
+                                    <Text style={styles.detailInfoValue}>{service.durationText || 'Liên hệ'}</Text>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Category */}
+                    {service.category && (
+                        <View style={styles.detailCategoryCard}>
+                            <Ionicons name="folder" size={20} color="#667eea" />
+                            <Text style={styles.detailCategoryText}>Danh mục: {service.category}</Text>
+                        </View>
+                    )}
+
+                    {/* Description Card */}
+                    <View style={styles.detailDescriptionCard}>
+                        <Text style={styles.detailDescriptionTitle}>📋 Mô tả dịch vụ</Text>
+                        <Text style={styles.detailDescriptionText}>{service.description}</Text>
+                    </View>
+
+                    {/* Action Button */}
+                    <TouchableOpacity activeOpacity={0.8}>
+                        <LinearGradient
+                            colors={['#667eea', '#764ba2']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.detailActionButton}
+                        >
+                            <Ionicons name="calendar" size={24} color="white" />
+                            <Text style={styles.detailActionButtonText}>Đặt lịch ngay</Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                </ScrollView>
+            </SafeAreaView>
+        </GradientBackground>
     );
 } 
 

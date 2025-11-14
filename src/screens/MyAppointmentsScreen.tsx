@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View, 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import GradientBackground from '../components/GradientBackground';
+import VirtualAssistant from '../components/VirtualAssistant';
 
 interface Appointment {
   appointmentId: number;
@@ -225,6 +226,17 @@ export default function MyAppointmentsScreen() {
           />
         )}
       </View>
+      <VirtualAssistant 
+        screen="MyAppointments" 
+        onAction={(actionType, actionData) => {
+          // Handle actions from virtual assistant
+          if (actionType === 'view_appointment' && actionData?.followUpDate) {
+            // Navigate to appointment detail or filter
+          } else if (actionType === 'book_appointment') {
+            // Navigate to booking screen
+          }
+        }}
+      />
     </GradientBackground>
   );
 }

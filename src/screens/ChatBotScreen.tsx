@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View, Keyboard } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View, Keyboard, Animated, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import geminiService, { fetchClinicDataForPrompt, fetchUserServiceHistory } from '../services/geminiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import GradientBackground from '../components/GradientBackground';
@@ -14,10 +15,25 @@ interface Message {
     isTyping?: boolean;
 }
 
+interface QuickReply {
+    id: string;
+    text: string;
+    icon: string;
+}
+
 const initialMessages: Message[] = [
-    { id: '1', text: '🐾 Xin chào! Tôi là Dr. AI - Chatbot tư vấn thú y thông minh của phòng khám Thu Y Hương Nở!', sender: 'bot' },
-    { id: '2', text: 'Tôi có thể giúp bạn:\n• Tư vấn chăm sóc thú cưng\n• Giới thiệu dịch vụ phù hợp\n• Hướng dẫn đặt lịch hẹn\n• Trả lời câu hỏi y tế\n• Cung cấp thông tin bác sĩ', sender: 'bot' },
-    { id: '3', text: 'Hãy cho tôi biết bạn cần hỗ trợ gì nhé! 💬', sender: 'bot' },
+    { id: '1', text: 'Xin chào! 👋 Tôi là Dr. AI - Trợ lý ảo của phòng khám Thú Y Hương Nở!', sender: 'bot' },
+    { id: '2', text: 'Tôi có thể giúp bạn:\n\n🏥 Tư vấn chăm sóc thú cưng\n💊 Giới thiệu dịch vụ phù hợp\n📅 Hướng dẫn đặt lịch hẹn\n❓ Trả lời câu hỏi y tế\n👨‍⚕️ Thông tin bác sĩ', sender: 'bot' },
+    { id: '3', text: 'Hãy chọn câu hỏi bên dưới hoặc nhập câu hỏi của bạn! 💬', sender: 'bot' },
+];
+
+const quickReplies: QuickReply[] = [
+    { id: '1', text: 'Dịch vụ của phòng khám', icon: 'medical' },
+    { id: '2', text: 'Đặt lịch khám', icon: 'calendar' },
+    { id: '3', text: 'Giá dịch vụ', icon: 'cash' },
+    { id: '4', text: 'Thông tin bác sĩ', icon: 'person' },
+    { id: '5', text: 'Chăm sóc thú cưng', icon: 'heart' },
+    { id: '6', text: 'Liên hệ', icon: 'call' },
 ];
 
 export default function ChatBotScreen() {
@@ -27,7 +43,10 @@ export default function ChatBotScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const [showQuickReplies, setShowQuickReplies] = useState(true);
     const flatListRef = useRef<FlatList>(null);
+    const inputRef = useRef<TextInput>(null);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
     const [userContext, setUserContext] = useState({
         hasPets: false,
         recentAppointments: [] as any[],
@@ -42,6 +61,13 @@ export default function ChatBotScreen() {
                 flatListRef.current?.scrollToEnd({ animated: true });
             }, 100);
         }
+        
+        // Fade in animation
+        Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+        }).start();
     }, [messages]);
 
     useEffect(() => {
@@ -63,14 +89,14 @@ export default function ChatBotScreen() {
         loadClinicData();
     }, []);
 
-    // Xử lý keyboard events
+    // Xử lý keyboard events với scroll tốt hơn
     useEffect(() => {
         const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
             setKeyboardHeight(e.endCoordinates.height);
             // Scroll to bottom when keyboard shows
             setTimeout(() => {
                 flatListRef.current?.scrollToEnd({ animated: true });
-            }, 100);
+            }, 200);
         });
         
         const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
@@ -149,6 +175,15 @@ export default function ChatBotScreen() {
         }
     };
 
+    const handleQuickReply = (text: string) => {
+        setInputText(text);
+        setShowQuickReplies(false);
+        // Auto focus input after selecting quick reply
+        setTimeout(() => {
+            inputRef.current?.focus();
+        }, 100);
+    };
+
     const handleSend = async () => {
         if (inputText.trim().length === 0) return;
         if (isLoading) return;
@@ -162,6 +197,7 @@ export default function ChatBotScreen() {
         setMessages(prev => [...prev, userMessage]);
         setInputText('');
         setIsLoading(true);
+        setShowQuickReplies(false);
 
         // Scroll to bottom after adding user message
         setTimeout(() => {
@@ -295,23 +331,109 @@ export default function ChatBotScreen() {
         return suggestions;
     };
 
-    const renderMessage = ({ item }: { item: Message }) => {
+    // Function to render formatted text with proper line breaks and styling
+    const renderFormattedText = (text: string) => {
+        // Split by double line breaks for paragraphs
+        const paragraphs = text.split('\n\n');
+        
+        return paragraphs.map((paragraph, pIndex) => {
+            // Split each paragraph by single line breaks
+            const lines = paragraph.split('\n');
+            
+            return (
+                <View key={pIndex} style={pIndex > 0 ? styles.paragraph : null}>
+                    {lines.map((line, lIndex) => {
+                        const trimmedLine = line.trim();
+                        if (!trimmedLine) return null;
+                        
+                        // Check if line is a list item (starts with number, bullet, or emoji)
+                        const isListItem = /^[\d]+\./.test(trimmedLine) || 
+                                         /^[•·⦿○●]/.test(trimmedLine) ||
+                                         /^[▪▫◾◽]/.test(trimmedLine);
+                        
+                        // Check if line contains emoji at start (for special formatting)
+                        const startsWithEmoji = /^[\u{1F300}-\u{1F9FF}]/u.test(trimmedLine);
+                        
+                        return (
+                            <Text 
+                                key={`${pIndex}-${lIndex}`} 
+                                style={[
+                                    styles.botMessageText,
+                                    isListItem && styles.listItemText,
+                                    startsWithEmoji && styles.emojiLineText
+                                ]}
+                            >
+                                {trimmedLine}
+                            </Text>
+                        );
+                    })}
+                </View>
+            );
+        });
+    };
+
+    const renderMessage = ({ item, index }: { item: Message; index: number }) => {
         const isUser = item.sender === 'user';
+        const isFirstMessage = index === 0 || messages[index - 1]?.sender !== item.sender;
+        
         return (
-            <View style={[styles.messageRow, isUser ? styles.userMessageRow : styles.botMessageRow]}>
-                <View style={[styles.messageBubble, isUser ? styles.userMessageBubble : styles.botMessageBubble]}>
+            <Animated.View 
+                style={[
+                    styles.messageRow, 
+                    isUser ? styles.userMessageRow : styles.botMessageRow,
+                    { opacity: fadeAnim }
+                ]}
+            >
+                {/* Bot Avatar */}
+                {!isUser && isFirstMessage && (
+                    <View style={styles.avatarContainer}>
+                        <LinearGradient
+                            colors={['#667eea', '#764ba2']}
+                            style={styles.avatar}
+                        >
+                            <Ionicons name="medical" size={20} color="white" />
+                        </LinearGradient>
+                    </View>
+                )}
+                {!isUser && !isFirstMessage && <View style={styles.avatarPlaceholder} />}
+                
+                {/* Message Bubble */}
+                {isUser ? (
+                    <LinearGradient
+                        colors={['#667eea', '#764ba2']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[styles.messageBubble, styles.userMessageBubble]}
+                    >
                     {item.isTyping ? (
                         <View style={styles.typingContainer}>
-                            <ActivityIndicator size="small" color="#666" />
-                            <Text style={styles.typingText}>{item.text}</Text>
+                                <ActivityIndicator size="small" color="white" />
+                                <Text style={[styles.typingText, { color: 'white' }]}>{item.text}</Text>
                         </View>
                     ) : (
-                        <Text style={isUser ? styles.userMessageText : styles.botMessageText}>
+                            <Text style={styles.userMessageText}>
                             {item.text}
                         </Text>
                     )}
+                    </LinearGradient>
+                ) : (
+                    <View style={[styles.messageBubble, styles.botMessageBubble]}>
+                        {item.isTyping ? (
+                            <View style={styles.typingContainer}>
+                                <View style={styles.typingDots}>
+                                    <View style={[styles.dot, styles.dot1]} />
+                                    <View style={[styles.dot, styles.dot2]} />
+                                    <View style={[styles.dot, styles.dot3]} />
                 </View>
             </View>
+                        ) : (
+                            <View>
+                                {renderFormattedText(item.text)}
+                            </View>
+                        )}
+                    </View>
+                )}
+            </Animated.View>
         );
     };
 
@@ -319,34 +441,49 @@ export default function ChatBotScreen() {
         <GradientBackground>
             <SafeAreaView style={styles.safeArea}>
                 {/* Header */}
-                <View style={styles.header}>
+                <LinearGradient
+                    colors={['#667eea', '#764ba2']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.header}
+                >
                     <TouchableOpacity 
                         style={styles.backButton}
                         onPress={handleGoBack}
                     >
-                        <Ionicons name="arrow-back" size={24} color="#007bff" />
+                        <Ionicons name="arrow-back" size={24} color="white" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Chatbot Tư vấn AI</Text>
-                    <View style={styles.headerControls}>
-                        {!apiKeyConfigured && (
-                            <TouchableOpacity 
-                                style={styles.configButton}
-                                onPress={handleConfigureApiKey}
-                            >
-                                <Ionicons name="settings-outline" size={20} color="#FF6B6B" />
-                            </TouchableOpacity>
-                        )}
+                    
+                    <View style={styles.headerCenter}>
+                        <View style={styles.headerAvatarContainer}>
+                            <View style={styles.headerAvatar}>
+                                <Ionicons name="medical" size={24} color="#667eea" />
+                            </View>
+                            <View style={[styles.statusDot, apiKeyConfigured && styles.statusDotActive]} />
+                        </View>
+                        <View style={styles.headerTextContainer}>
+                            <Text style={styles.headerTitle}>Dr. AI Assistant</Text>
+                            <Text style={styles.headerSubtitle}>
+                                {apiKeyConfigured ? '🟢 Trực tuyến' : '🔴 Chưa cấu hình'}
+                            </Text>
                     </View>
                 </View>
+                    
+                    <TouchableOpacity 
+                        style={styles.headerMenuButton}
+                        onPress={handleConfigureApiKey}
+                    >
+                        <Ionicons name="ellipsis-vertical" size={24} color="white" />
+                    </TouchableOpacity>
+                </LinearGradient>
 
                 {/* Main Content with KeyboardAvoidingView */}
                 <KeyboardAvoidingView 
                     style={styles.keyboardAvoidingView}
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
                 >
                     {/* Messages Container */}
-                    <View style={styles.messagesContainer}>
                         <FlatList
                             ref={flatListRef}
                             data={messages}
@@ -355,71 +492,111 @@ export default function ChatBotScreen() {
                             contentContainerStyle={styles.messageList}
                             style={styles.flatList}
                             showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
                             onContentSizeChange={() => {
+                            setTimeout(() => {
                                 flatListRef.current?.scrollToEnd({ animated: true });
+                            }, 100);
                             }}
                             onLayout={() => {
+                            setTimeout(() => {
                                 flatListRef.current?.scrollToEnd({ animated: true });
+                            }, 100);
                             }}
                         />
-                    </View>
 
                     {/* Input Container - Fixed at bottom */}
                     <View style={styles.inputContainer}>
+                        {/* Quick Replies */}
+                        {showQuickReplies && messages.length <= 3 && (
+                            <ScrollView 
+                                horizontal 
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.quickRepliesContainer}
+                                contentContainerStyle={styles.quickRepliesContent}
+                            >
+                                {quickReplies.map((reply) => (
+                                    <TouchableOpacity
+                                        key={reply.id}
+                                        style={styles.quickReplyButton}
+                                        onPress={() => handleQuickReply(reply.text)}
+                                    >
+                                        <Ionicons name={reply.icon as any} size={16} color="#667eea" />
+                                        <Text style={styles.quickReplyText}>{reply.text}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        )}
+
                         {/* Context Banner */}
                         {userContext.hasPets && (
                             <View style={styles.contextBanner}>
-                                <Ionicons name="information-circle" size={16} color="#007bff" />
+                                <Ionicons name="paw" size={16} color="#667eea" />
                                 <Text style={styles.contextText}>
                                     Tôi thấy bạn đã có thú cưng. Tôi có thể tư vấn cụ thể hơn!
                                 </Text>
                             </View>
                         )}
-
-                        {/* Info Display */}
-                        <View style={styles.infoDisplay}>
-                            <View style={styles.infoItem}>
-                                <Ionicons name="information-circle-outline" size={16} color="#007bff" />
-                                <Text style={styles.infoText}>
-                                    Chatbot AI có thể tư vấn về dịch vụ, lịch làm việc và chăm sóc thú cưng
-                                </Text>
-                            </View>
-                            {!apiKeyConfigured && (
-                                <View style={styles.warningItem}>
-                                    <Ionicons name="warning-outline" size={16} color="#FF6B6B" />
-                                    <Text style={styles.warningText}>
-                                        Cần cấu hình API key để sử dụng đầy đủ tính năng
-                                    </Text>
-                                </View>
-                            )}
-                        </View>
                         
                         {/* Input Row */}
                         <View style={styles.inputRow}>
+                            <View style={styles.inputWrapper}>
                             <TextInput
+                                    ref={inputRef}
                                 style={styles.input}
                                 value={inputText}
                                 onChangeText={setInputText}
-                                placeholder="Nhập tin nhắn..."
-                                placeholderTextColor="#999"
+                                    placeholder="💬 Nhập câu hỏi của bạn..."
+                                    placeholderTextColor="#aaa"
                                 multiline
                                 maxLength={500}
                                 editable={!isLoading}
                                 returnKeyType="send"
+                                    blurOnSubmit={false}
                                 onSubmitEditing={handleSend}
-                            />
+                                    onFocus={() => {
+                                        setShowQuickReplies(false);
+                                        // Scroll when input is focused
+                                        setTimeout(() => {
+                                            flatListRef.current?.scrollToEnd({ animated: true });
+                                        }, 300);
+                                    }}
+                                />
+                                {inputText.length > 0 && (
+                                    <TouchableOpacity 
+                                        style={styles.clearButton}
+                                        onPress={() => setInputText('')}
+                                    >
+                                        <Ionicons name="close-circle" size={20} color="#aaa" />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                            
                             <TouchableOpacity 
                                 style={[styles.sendButton, (isLoading || !inputText.trim()) && styles.sendButtonDisabled]} 
                                 onPress={handleSend}
                                 disabled={isLoading || !inputText.trim()}
                             >
+                                <LinearGradient
+                                    colors={isLoading || !inputText.trim() ? ['#ccc', '#999'] : ['#667eea', '#764ba2']}
+                                    style={styles.sendButtonGradient}
+                            >
                                 {isLoading ? (
                                     <ActivityIndicator size="small" color="white" />
                                 ) : (
-                                    <Ionicons name="send" size={24} color="white" />
+                                        <Ionicons name="send" size={20} color="white" />
                                 )}
+                                </LinearGradient>
                             </TouchableOpacity>
                         </View>
+
+                        {/* Character count */}
+                        {inputText.length > 400 && (
+                            <Text style={styles.charCount}>
+                                {inputText.length}/500
+                            </Text>
+                        )}
                     </View>
                 </KeyboardAvoidingView>
             </SafeAreaView>
@@ -432,95 +609,56 @@ const styles = StyleSheet.create({
         flex: 1 
     },
     
-    // Thêm KeyboardAvoidingView style
     keyboardAvoidingView: {
         flex: 1,
-    },
-    
-    // Thêm Messages Container
-    messagesContainer: {
-        flex: 1,
+        backgroundColor: '#f5f7fa',
     },
     
     container: { 
         flex: 1,
-        // Bỏ position: 'relative'
     },
     
+    // Header styles
     header: {
-        paddingVertical: 16,
-        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 12 : 16,
+        paddingBottom: 16,
+        paddingHorizontal: 16,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'white',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e9ecef',
-        zIndex: 10,
         elevation: 4,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.15,
         shadowRadius: 4,
     },
     
     backButton: {
-        padding: 10,
-        marginRight: 12,
-        borderRadius: 22,
-        backgroundColor: '#f8f9fa',
-        borderWidth: 1,
-        borderColor: '#e9ecef',
-    },
-    
-    headerTitle: { 
-        fontSize: 20, 
-        fontWeight: '700', 
-        flex: 1,
-        textAlign: 'center',
-        marginRight: 40,
-        color: '#2c3e50',
-    },
-    
-    headerControls: {
-        flexDirection: 'row',
-        gap: 10,
-    },
-    
-    configButton: {
-        padding: 8,
+        width: 40,
+        height: 40,
         borderRadius: 20,
-        backgroundColor: '#FFE8E8',
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     
-    flatList: {
+    headerCenter: {
         flex: 1,
-    },
-    
-    messageList: {
-        paddingHorizontal: 15,
-        paddingTop: 15,
-        paddingBottom: 20,
-        flexGrow: 1,
-    },
-    
-    messageRow: {
         flexDirection: 'row',
-        marginVertical: 5,
+        alignItems: 'center',
+        marginLeft: 12,
     },
     
-    userMessageRow: { 
-        justifyContent: 'flex-end' 
+    headerAvatarContainer: {
+        position: 'relative',
     },
     
-    botMessageRow: { 
-        justifyContent: 'flex-start' 
-    },
-    
-    messageBubble: {
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 18,
-        maxWidth: '85%',
+    headerAvatar: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'white',
+        justifyContent: 'center',
+        alignItems: 'center',
         elevation: 2,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -528,145 +666,308 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
     },
     
+    statusDot: {
+        position: 'absolute',
+        bottom: 2,
+        right: 2,
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#ff4444',
+        borderWidth: 2,
+        borderColor: 'white',
+    },
+    
+    statusDotActive: {
+        backgroundColor: '#4CAF50',
+    },
+    
+    headerTextContainer: {
+        marginLeft: 12,
+        flex: 1,
+    },
+    
+    headerTitle: { 
+        fontSize: 16, 
+        fontWeight: '700', 
+        color: 'white',
+        marginBottom: 2,
+    },
+    
+    headerSubtitle: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontWeight: '500',
+    },
+    
+    headerMenuButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    
+    flatList: {
+        flex: 1,
+    },
+    
+    messageList: {
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 20,
+        flexGrow: 1,
+    },
+    
+    messageRow: {
+        flexDirection: 'row',
+        marginVertical: 4,
+        alignItems: 'flex-end',
+    },
+    
+    userMessageRow: { 
+        justifyContent: 'flex-end',
+        marginLeft: 50,
+    },
+    
+    botMessageRow: { 
+        justifyContent: 'flex-start',
+        marginRight: 50,
+    },
+    
+    avatarContainer: {
+        marginRight: 8,
+        marginBottom: 2,
+    },
+    
+    avatar: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 2,
+        shadowColor: '#667eea',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+    },
+    
+    avatarPlaceholder: {
+        width: 36,
+        marginRight: 8,
+    },
+    
+    messageBubble: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 20,
+        maxWidth: '100%',
+    },
+    
     userMessageBubble: {
-        backgroundColor: '#007bff',
-        borderBottomRightRadius: 6,
+        borderBottomRightRadius: 4,
+        elevation: 3,
+        shadowColor: '#667eea',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
     },
     
     botMessageBubble: {
-        backgroundColor: '#f8f9fa',
-        borderBottomLeftRadius: 6,
-        borderWidth: 1,
-        borderColor: '#e9ecef',
+        backgroundColor: 'white',
+        borderBottomLeftRadius: 4,
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
     },
     
     userMessageText: { 
         color: 'white', 
-        fontSize: 16, 
-        lineHeight: 22 
+        fontSize: 15, 
+        lineHeight: 22,
+        fontWeight: '400',
     },
     
     botMessageText: { 
-        color: '#2c3e50', 
-        fontSize: 16, 
-        lineHeight: 22 
+        color: '#2d3748', 
+        fontSize: 15, 
+        lineHeight: 22,
+        fontWeight: '400',
+        marginBottom: 4,
+    },
+    
+    paragraph: {
+        marginTop: 12,
+    },
+    
+    listItemText: {
+        marginLeft: 8,
+        marginBottom: 6,
+    },
+    
+    emojiLineText: {
+        marginBottom: 8,
+        fontWeight: '500',
     },
     
     typingContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        paddingVertical: 4,
     },
     
     typingText: {
-        color: '#666',
-        fontSize: 16,
-        fontStyle: 'italic',
+        color: 'white',
+        fontSize: 14,
+        marginLeft: 8,
     },
     
-    // Cập nhật Input Container - Bỏ position absolute
+    typingDots: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    
+    dot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#667eea',
+    },
+    
+    dot1: {
+        opacity: 0.4,
+    },
+    
+    dot2: {
+        opacity: 0.6,
+    },
+    
+    dot3: {
+        opacity: 0.8,
+    },
+    
+    // Input Container - Fixed to bottom
     inputContainer: {
-        padding: 15,
-        borderTopWidth: 1,
-        borderTopColor: '#f0f0f0',
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: Platform.OS === 'ios' ? 20 : 16,
         backgroundColor: 'white',
-        // Bỏ position: 'absolute', bottom: 0, left: 0, right: 0
-        // Bỏ zIndex: 5, elevation: 8
+        borderTopWidth: 1,
+        borderTopColor: '#e0e0e0',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
     },
     
-    infoDisplay: {
-        marginBottom: 15,
+    quickRepliesContainer: {
+        marginBottom: 12,
     },
     
-    infoItem: {
+    quickRepliesContent: {
+        paddingRight: 16,
+    },
+    
+    quickReplyButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 5,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        backgroundColor: '#f0f8ff',
-        borderRadius: 8,
+        backgroundColor: '#f0f4ff',
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 20,
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: '#667eea',
     },
     
-    infoText: {
-        fontSize: 12,
-        color: '#007bff',
+    quickReplyText: {
+        fontSize: 13,
+        color: '#667eea',
         marginLeft: 6,
-        flex: 1,
+        fontWeight: '600',
     },
     
-    warningItem: {
+    contextBanner: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        backgroundColor: '#FFE8E8',
-        borderRadius: 8,
+        backgroundColor: '#f0f4ff',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+        marginBottom: 12,
+        borderLeftWidth: 3,
+        borderLeftColor: '#667eea',
     },
     
-    warningText: {
-        fontSize: 12,
-        color: '#FF6B6B',
-        marginLeft: 6,
+    contextText: {
+        fontSize: 13,
+        color: '#667eea',
+        marginLeft: 10,
         flex: 1,
+        fontWeight: '500',
     },
     
     inputRow: {
         flexDirection: 'row',
         alignItems: 'flex-end',
+        gap: 10,
+    },
+    
+    inputWrapper: {
+        flex: 1,
+        position: 'relative',
     },
     
     input: {
-        flex: 1,
-        minHeight: 44,
+        minHeight: 48,
         maxHeight: 120,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 22,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        marginRight: 12,
-        fontSize: 16,
-        textAlignVertical: 'top',
-        borderWidth: 1,
-        borderColor: '#e9ecef',
+        backgroundColor: '#f5f7fa',
+        borderRadius: 24,
+        paddingHorizontal: 20,
+        paddingRight: 40,
+        paddingVertical: 14,
+        fontSize: 15,
+        color: '#2d3748',
+        textAlignVertical: 'center',
+        borderWidth: 1.5,
+        borderColor: '#e2e8f0',
+    },
+    
+    clearButton: {
+        position: 'absolute',
+        right: 12,
+        top: '50%',
+        transform: [{ translateY: -10 }],
     },
     
     sendButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#007bff',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        overflow: 'hidden',
+    },
+    
+    sendButtonGradient: {
+        width: '100%',
+        height: '100%',
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 2,
-        shadowColor: '#007bff',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
     },
     
     sendButtonDisabled: {
-        backgroundColor: '#ccc',
+        opacity: 0.6,
     },
     
-    // Context Banner
-    contextBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#e7f3ff',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
-        marginBottom: 10,
-        borderLeftWidth: 3,
-        borderLeftColor: '#007bff',
-    },
-    
-    contextText: {
-        fontSize: 13,
-        color: '#007bff',
-        marginLeft: 8,
-        flex: 1,
-        fontWeight: '500',
+    charCount: {
+        fontSize: 11,
+        color: '#aaa',
+        textAlign: 'right',
+        marginTop: 4,
     },
 }); 

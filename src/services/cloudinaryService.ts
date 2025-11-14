@@ -101,9 +101,8 @@ export const pickImage = async (): Promise<string | null> => {
     
     const result = await launchImageLibraryAsync({
       mediaTypes: MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1], // Tỷ lệ 1:1 cho ảnh vuông
-      quality: 0.8,
+      allowsEditing: false, // Không cho phép chỉnh sửa/cắt ảnh
+      quality: 0.9, // Chất lượng cao hơn
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -124,9 +123,8 @@ export const takePhoto = async (): Promise<string | null> => {
     
     const result = await launchCameraAsync({
       mediaTypes: MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
+      allowsEditing: false, // Không cho phép chỉnh sửa/cắt ảnh
+      quality: 0.9, // Chất lượng cao hơn
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {

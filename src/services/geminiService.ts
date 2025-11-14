@@ -158,6 +158,37 @@ NGUYÊN TẮC:
 - Hiểu rõ trạng thái lịch hẹn: "Chờ xác nhận" = chưa duyệt, "Đã xác nhận" = đã được duyệt, "Hoàn thành" = đã khám xong, "Đã hủy" = không còn hiệu lực
 - So sánh ngày giờ lịch hẹn với THÔNG TIN THỜI GIAN HIỆN TẠI để xác định lịch đã qua, sắp tới, hay đang diễn ra
 
+QUY TẮC FORMAT CÂU TRẢ LỜI (CỰC KỲ QUAN TRỌNG):
+✅ ĐÚNG - Khi liệt kê nhiều items (dịch vụ, thú cưng, lịch hẹn, v.v.):
+  • Mỗi item PHẢI xuống dòng riêng
+  • Sử dụng số thứ tự hoặc bullet points
+  • Có khoảng trống giữa các phần
+  
+  VÍ DỤ ĐÚNG:
+  "Phòng khám có các dịch vụ sau:
+  
+  1. Khám tổng quát - 200,000đ
+  2. Tiêm phòng - 150,000đ
+  3. Tắm cắt lông - 180,000đ
+  
+  Bạn quan tâm dịch vụ nào ạ?"
+
+❌ SAI - KHÔNG viết thành một dòng dài:
+  "Phòng khám có các dịch vụ sau: 1. Khám tổng quát - 200,000đ, 2. Tiêm phòng - 150,000đ, 3. Tắm cắt lông - 180,000đ. Bạn quan tâm..."
+
+⭐ CẤU TRÚC CÂU TRẢ LỜI:
+- Mở đầu thân thiện (1 dòng)
+- [Dòng trống]
+- Nội dung chính với items xuống dòng
+- [Dòng trống]  
+- Kết luận/câu hỏi follow-up
+
+⭐ KHI NÀO CẦN XUỐNG DÒNG:
+- Liệt kê ≥2 items → PHẢI xuống dòng
+- Các phần khác nhau (giá, mô tả, ghi chú) → xuống dòng
+- Sau câu hỏi hoặc lời chào → xuống dòng
+- Giữa các đoạn văn → xuống dòng 2 lần
+
 Câu hỏi: ${request.message}
 
 Trả lời:`;

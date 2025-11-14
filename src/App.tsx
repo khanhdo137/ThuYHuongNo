@@ -17,8 +17,10 @@ import {
   requestNotificationPermissions,
   setupNotificationChannel,
 } from './services/localNotificationService';
+import { checkForNewNotifications } from './services/notificationPollingService';
 import apiClient from './api/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getNotifications } from './api/notificationApi';
 
 // Kiểm tra xem có đang chạy trong Expo Go không
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -31,7 +33,7 @@ const ThemedApp = () => {
   const notificationListener = useRef<any>();
   const responseListener = useRef<any>();
 
-  // Function to refresh notification count
+  // Function to refresh notification count - Load unread reminders từ Notification API
   const refreshNotificationCount = async () => {
     try {
       // ✅ Kiểm tra token trước khi gọi API
@@ -42,38 +44,17 @@ const ThemedApp = () => {
         return;
       }
       
-      console.log('🔄 App.tsx - Refreshing notification count...');
+      console.log('🔄 App.tsx - Refreshing notification count from reminders...');
       
-      // Get viewed notifications from storage
-      const viewedNotificationsKey = '@viewed_notifications';
-      const stored = await AsyncStorage.getItem(viewedNotificationsKey);
-      const viewedNotifications = stored ? new Set(JSON.parse(stored)) : new Set();
+      // Load reminders từ Notification API và đếm unread
+      const response = await getNotifications(1, 50);
+      const notifications = response.notifications || [];
       
-      // Get appointments from API
-      const res = await apiClient.get('/Appointment', { params: { limit: 50, page: 1 } });
-      const all = res.data.appointments || res.data || [];
+      // Đếm số reminders chưa đọc
+      const unreadCount = notifications.filter((n: any) => !n.isRead).length;
       
-      // Tính ngày 10 ngày trước
-      const tenDaysAgo = new Date();
-      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-      
-      // Filter appointments with status 1 (confirmed) or 3 (cancelled) trong 10 ngày gần đây
-      const filtered = all.filter((item: any) => {
-        // Check status
-        if (item.status !== 1 && item.status !== 3) return false;
-        
-        // Check date - chỉ lấy trong 10 ngày gần đây
-        const appointmentDate = new Date(`${item.appointmentDate} ${item.appointmentTime}`);
-        return appointmentDate >= tenDaysAgo;
-      });
-      
-      // Count unviewed notifications
-      const unviewedCount = filtered.filter(
-        (item: any) => !viewedNotifications.has(item.appointmentId)
-      ).length;
-      
-      console.log(`🔔 App.tsx - Found ${filtered.length} appointments (last 10 days), ${unviewedCount} unviewed`);
-      setCount(unviewedCount);
+      console.log(`🔔 App.tsx - Found ${notifications.length} reminders, ${unreadCount} unread`);
+      setCount(unreadCount);
     } catch (error: any) {
       // Im lặng lỗi 401 (Unauthorized)
       if (error?.response?.status !== 401) {
@@ -142,7 +123,10 @@ const ThemedApp = () => {
     const handleAppStateChange = (nextAppState: string) => {
       if (nextAppState === 'active') {
         console.log('📱 App became active - checking for new notifications');
+        // Check cả appointments và notifications từ API
         checkForNewAppointmentNotifications();
+        // Check notifications từ polling service (sử dụng function đã export)
+        checkForNewNotifications();
         refreshNotificationCount();
       }
     };
@@ -152,8 +136,16 @@ const ThemedApp = () => {
     // Setup notifications and initial load
     setupLocalNotifications();
     refreshNotificationCount();
-
-    // Cleanup
+    
+    // 🔄 Thêm interval để check notifications định kỳ khi app đang mở (foreground)
+    // Điều này đảm bảo notifications được check ngay cả khi app đang active
+    const foregroundCheckInterval = setInterval(() => {
+      console.log('🔄 Foreground check - checking for new notifications...');
+      checkForNewNotifications();
+      refreshNotificationCount();
+    }, 10000); // Check mỗi 10 giây khi app đang mở
+    
+    // Cleanup interval khi component unmount
     return () => {
       if (notificationListener.current) {
         Notifications.removeNotificationSubscription(notificationListener.current);
@@ -162,6 +154,7 @@ const ThemedApp = () => {
         Notifications.removeNotificationSubscription(responseListener.current);
       }
       subscription?.remove();
+      clearInterval(foregroundCheckInterval);
     };
   }, []);
   

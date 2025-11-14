@@ -27,7 +27,9 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -52,6 +54,14 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Ứng dụng cần quyền truy cập vị trí để hiển thị vị trí phòng khám trên bản đồ."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff",
+          "sounds": []
+        }
       ]
     ],
     "experiments": {
@@ -62,6 +72,13 @@
       "READ_EXTERNAL_STORAGE",
       "WRITE_EXTERNAL_STORAGE",
       "LOCATION"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9f58ced1-e600-4954-9bc9-04b8f3c60dd6"
+      }
+    },
+    "owner": "khanhdo137"
   }
 }

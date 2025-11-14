@@ -38,15 +38,63 @@ export async function setupNotificationChannel() {
 }
 
 /**
- * Tạo local notification
+ * Hiển thị notification ngay lập tức (present notification)
+ * Sử dụng scheduleNotificationAsync với trigger: null để hiển thị ngay
  */
-export async function scheduleLocalNotification(
+export async function presentNotificationNow(
   title: string,
   body: string,
   data?: any
 ) {
   try {
-    console.log('🔔 Creating local notification:', { title, body, data });
+    console.log('🔔 Presenting notification now:', { title, body, data });
+    
+    // Check permissions first
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) {
+      console.error('❌ Cannot present notification: No permissions');
+      return false;
+    }
+    
+    await setupNotificationChannel();
+    
+    // Sử dụng scheduleNotificationAsync với trigger: null để hiển thị ngay lập tức
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data,
+        sound: 'default',
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+        badge: 1,
+      },
+      trigger: null, // null = hiển thị ngay lập tức
+    });
+    
+    console.log('✅ Notification presented successfully with ID:', notificationId);
+    return true;
+  } catch (error) {
+    console.error('❌ Error presenting notification:', error);
+    return false;
+  }
+}
+
+/**
+ * Tạo local notification (scheduled hoặc immediate)
+ */
+export async function scheduleLocalNotification(
+  title: string,
+  body: string,
+  data?: any,
+  immediate: boolean = true
+) {
+  try {
+    console.log('🔔 Creating local notification:', { title, body, data, immediate });
+    
+    // Nếu immediate = true, sử dụng presentNotificationNow để hiển thị ngay
+    if (immediate) {
+      return await presentNotificationNow(title, body, data);
+    }
     
     // Check permissions first
     const hasPermission = await requestNotificationPermissions();
@@ -57,6 +105,7 @@ export async function scheduleLocalNotification(
     
     await setupNotificationChannel();
     
+    // Sử dụng trigger với seconds: 1 để schedule notification trong tương lai
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title,
@@ -64,11 +113,12 @@ export async function scheduleLocalNotification(
         data,
         sound: 'default',
         priority: Notifications.AndroidNotificationPriority.HIGH,
+        badge: 1, // Hiển thị badge trên icon
       },
-      trigger: null, // null = hiển thị ngay lập tức
+      trigger: { seconds: 1 }, // Hiển thị sau 1 giây
     });
     
-    console.log('✅ Local notification created successfully with ID:', notificationId);
+    console.log('✅ Local notification scheduled successfully with ID:', notificationId);
     return true;
   } catch (error) {
     console.error('❌ Error creating notification:', error);
@@ -285,30 +335,124 @@ export async function clearNotifiedAppointments() {
 }
 
 /**
+ * Check và tạo local notification cho notifications mới từ API
+ */
+export async function checkForNewNotificationsFromAPI() {
+  try {
+    // ✅ Kiểm tra token trước khi gọi API
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      return 0;
+    }
+    
+    console.log('🔍 Checking for new notifications from API...');
+    
+    // Import động để tránh circular dependency
+    const { getNotifications } = await import('../api/notificationApi');
+    
+    // Lấy danh sách notifications chưa đọc
+    const response = await getNotifications(1, 50, false);
+    const unreadNotifications = response.notifications || [];
+    
+    // Lấy danh sách notification IDs đã tạo local notification
+    const NOTIFIED_IDS_KEY = '@notified_notification_ids';
+    const notifiedIdsStored = await AsyncStorage.getItem(NOTIFIED_IDS_KEY);
+    const notifiedIds = notifiedIdsStored ? new Set<number>(JSON.parse(notifiedIdsStored)) : new Set<number>();
+    
+    // Tìm notifications mới chưa được tạo local notification
+    const newNotifications = unreadNotifications.filter(
+      (notif: any) => !notifiedIds.has(notif.notificationId)
+    );
+    
+    console.log(`📊 Found ${unreadNotifications.length} unread notifications, ${newNotifications.length} new`);
+    
+    // Tạo local notification cho mỗi notification mới
+    let createdCount = 0;
+    for (const notification of newNotifications) {
+      const success = await presentNotificationNow(
+        notification.title || '🔔 Thông báo mới',
+        notification.body || 'Bạn có thông báo mới từ phòng khám',
+        {
+          type: notification.type || 'notification',
+          notificationId: notification.notificationId,
+          ...(notification.data ? JSON.parse(notification.data) : {}),
+        }
+      );
+      
+      if (success) {
+        notifiedIds.add(notification.notificationId);
+        createdCount++;
+        console.log(`✅ Created local notification for ID: ${notification.notificationId}`);
+      }
+    }
+    
+    // Lưu danh sách đã notify
+    if (newNotifications.length > 0) {
+      await AsyncStorage.setItem(
+        NOTIFIED_IDS_KEY,
+        JSON.stringify(Array.from(notifiedIds))
+      );
+    }
+    
+    if (createdCount > 0) {
+      console.log(`🔔 Created ${createdCount} new local notifications from API`);
+    }
+    
+    return createdCount;
+  } catch (error: any) {
+    // Im lặng lỗi 401 (Unauthorized)
+    if (error?.response?.status !== 401) {
+      console.error('❌ Error checking for new notifications from API:', error);
+    }
+    return 0;
+  }
+}
+
+/**
  * Lấy quyền thông báo
+ * Cải thiện để xử lý tốt hơn cho Android 13+
  */
 export async function requestNotificationPermissions() {
   try {
     console.log('🔐 Checking notification permissions...');
     
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    // Lấy permissions hiện tại
+    const { status: existingStatus, ...permissions } = await Notifications.getPermissionsAsync();
     console.log('📋 Current permission status:', existingStatus);
+    console.log('📋 Full permissions object:', permissions);
     
     let finalStatus = existingStatus;
     
+    // Nếu chưa được cấp quyền, yêu cầu quyền
     if (existingStatus !== 'granted') {
       console.log('🔐 Requesting notification permissions...');
-      const { status } = await Notifications.requestPermissionsAsync();
+      const { status, ...newPermissions } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+          allowAnnouncements: false,
+        },
+      });
       finalStatus = status;
       console.log('📋 New permission status:', finalStatus);
+      console.log('📋 New permissions object:', newPermissions);
     }
     
+    // Kiểm tra lại permissions sau khi request
     if (finalStatus !== 'granted') {
-      console.warn('⚠️ Notification permissions not granted. Status:', finalStatus);
-      return false;
+      // Kiểm tra lại một lần nữa để chắc chắn
+      const { status: recheckStatus } = await Notifications.getPermissionsAsync();
+      console.log('📋 Recheck permission status:', recheckStatus);
+      
+      if (recheckStatus !== 'granted') {
+        console.warn('⚠️ Notification permissions not granted. Final status:', recheckStatus);
+        return false;
+      }
+      finalStatus = recheckStatus;
     }
     
-    console.log('✅ Notification permissions granted successfully');
+    console.log('✅ Notification permissions granted successfully. Status:', finalStatus);
     return true;
   } catch (error) {
     console.error('❌ Error requesting permissions:', error);

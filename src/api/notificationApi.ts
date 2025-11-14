@@ -90,7 +90,7 @@ const deleteNotification = async (notificationId: number): Promise<void> => {
   }
 };
 
-// Export as object
+// Export as object (default export)
 const notificationApi = {
   getNotifications,
   getUnreadCount,
@@ -98,6 +98,9 @@ const notificationApi = {
   markAllAsRead,
   deleteNotification,
 };
+
+// Named exports for direct import
+export { getNotifications, getUnreadCount, markAsRead, markAllAsRead, deleteNotification };
 
 export default notificationApi;
 

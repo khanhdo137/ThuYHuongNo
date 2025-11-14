@@ -13,10 +13,10 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { API_IP, API_PORT } from '../constants/config';
 
-// API URL, sử dụng IP thật để kết nối với API đang chạy
-
-export const API_BASE_URL = 'http://192.168.1.33:5074/api';
+// API URL, sử dụng IP từ config chung
+export const API_BASE_URL = `http://${API_IP}:${API_PORT}/api`;
 
 const client = axios.create({
   baseURL: API_BASE_URL,

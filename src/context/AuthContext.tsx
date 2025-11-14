@@ -81,7 +81,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
           
           // Start notification polling if user is authenticated
-          await startNotificationPolling(30000); // Poll every 30 seconds
+          // Poll mỗi 15 giây để phát hiện notification mới nhanh hơn
+          await startNotificationPolling(15000);
         } else {
           setAuthState(prev => ({ ...prev, isLoading: false }));
         }
@@ -139,7 +140,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       // Start notification polling after successful login
-      await startNotificationPolling(30000); // Poll every 30 seconds
+      // Poll mỗi 15 giây để phát hiện notification mới nhanh hơn
+      await startNotificationPolling(15000);
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Login failed';
       setAuthState(prev => ({
